@@ -7,25 +7,26 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// مجلد أساسي لحفظ الجلسات المنفصلة
-const SESSIONS_FOLDER = path.join(__dirname, 'all_sessions');
-if (!fs.existsSync(SESSIONS_FOLDER)) {
-    fs.mkdirSync(SESSIONS_FOLDER);
-}
+// مجلد لتخزين الجلسات المنفصلة لضمان السرعة ومنع التعليق
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
+if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR);
 
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
     if (!phone) return res.json({ error: "يرجى إدخال رقم الهاتف" });
 
-    // تنظيف الرقم
     phone = phone.replace(/[^0-9]/g, '');
 
-    // توليد معرف فريد لهذه الجلسة لمنع التداخل والتعليق
-    const uniqueSessionId = `${phone}_${Date.now()}`;
-    const sessionPath = path.join(SESSIONS_FOLDER, uniqueSessionId);
+    // الحل الجذري: إنشاء مسار فريد لكل رقم لمنع تداخل البيانات
+    const userSessionPath = path.join(SESSIONS_DIR, `session_${phone}`);
 
     try {
-        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        // حذف أي بقايا جلسة قديمة للرقم لضمان تسجيل دخول سريع بنسبة 100%
+        if (fs.existsSync(userSessionPath)) {
+            fs.rmSync(userSessionPath, { recursive: true, force: true });
+        }
+
+        const { state, saveCreds } = await useMultiFileAuthState(userSessionPath);
         const { version } = await fetchLatestBaileysVersion();
 
         const socket = makeWASocket({
@@ -33,64 +34,53 @@ app.get('/api/pairing', async (req, res) => {
             version: version,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            // استخدام هوية متصفح "Ubuntu" لأنها الأكثر استقراراً في سيرفرات Render
+            // هوية متصفح Ubuntu هي الأفضل لتخطي تعليق "جاري تسجيل الدخول" في Render
             browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
         });
 
-        // إدارة حالة الاتصال لضمان تسجيل الدخول بنجاح
+        // هذا الجزء هو المسؤول عن إتمام عملية الربط فور إدخال الكود في هاتفك
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
-            
             if (connection === 'open') {
-                console.log(`✅ تم الربط بنجاق للرقم: ${phone}`);
+                console.log(`✅ تم الربط بنجاح للرقم: ${phone}`);
+                // يمكنك هنا إرسال رسالة ترحيبية للمستخدم عبر واتساب
             }
-
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
-                if (reason !== disconnectReason.loggedOut) {
-                    // إعادة محاولة الاتصال إذا لم يكن العطل بسبب تسجيل الخروج
-                } else {
-                    // تنظيف ملفات الجلسة إذا تم تسجيل الخروج
-                    fs.rmSync(sessionPath, { recursive: true, force: true });
+                if (reason === disconnectReason.loggedOut) {
+                    fs.rmSync(userSessionPath, { recursive: true, force: true });
                 }
             }
         });
 
         socket.ev.on('creds.update', saveCreds);
 
-        // طلب كود الاقتران مباشرة لضمان عدم حدوث تعارض "الرقم مربوط مسبقاً"
+        // طلب الكود مباشرة لضمان عدم توقف الخدمة لأي مستخدم آخر
         await delay(3000); 
         const code = await socket.requestPairingCode(phone);
         
         if (!res.headersSent) {
-            res.json({ 
-                status: true, 
-                pairing_code: code 
-            });
+            res.json({ status: true, pairing_code: code });
         }
 
-        // تنظيف تلقائي للجلسات غير المكتملة بعد 5 دقائق لتوفير مساحة السيرفر
+        // إبقاء الجلسة نشطة لمدة دقيقتين فقط بانتظار إدخال الكود
         setTimeout(() => {
             if (!socket.user) {
                 socket.end();
-                if (fs.existsSync(sessionPath)) {
-                    fs.rmSync(sessionPath, { recursive: true, force: true });
+                if (fs.existsSync(userSessionPath)) {
+                    fs.rmSync(userSessionPath, { recursive: true, force: true });
                 }
             }
-        }, 300000);
+        }, 120000);
 
     } catch (err) {
         console.error("Pairing Error:", err);
-        if (!res.headersSent) {
-            res.status(500).json({ error: "فشل في السيرفر، حاول مجدداً" });
-        }
+        if (!res.headersSent) res.status(500).json({ error: "فشل، حاول مجدداً" });
     }
 });
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
 
 app.listen(port, () => {
-    console.log(`سيرفر فارس العام يعمل بنجاح على المنفذ ${port}`);
+    console.log(`سيرفر فارس يعمل بنظام الجلسات المنفصلة على المنفذ ${port}`);
 });
