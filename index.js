@@ -8,8 +8,31 @@ const port = process.env.PORT || 3000;
 
 // 1. نظام توليد كود الاقتران (API)
 app.get('/api/pairing', async (req, res) => {
-    let phone = req.query.number;
-    if (!phone) return res.json({ error: "يرجى إدخال رقم الهاتف" });
+    let phone = req.query.number?.replace(/[^0-9]/g, '');
+    if (!phone) return res.json({ error: "يرجى إدخال الرقم" });
+
+    try {
+        // الحل: استخدام اسم مجلد متغير أو مسح المجلد الحالي لضمان طلب كود جديد
+        const { state, saveCreds } = await useMultiFileAuthState('fares_final_session');
+        
+        const socket = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            logger: pino({ level: "silent" }),
+            browser: ["Mac OS", "Chrome", "10.15.7"]
+        });
+
+        // طلب الكود مباشرة دون فحص "registered" المعيب في النسخ القديمة
+        await delay(3000);
+        const code = await socket.requestPairingCode(phone);
+        
+        res.json({ status: true, pairing_code: code });
+
+        socket.ev.on('creds.update', saveCreds);
+    } catch (err) {
+        res.status(500).json({ error: "فشل الطلب، جرب مسح Cache في Render" });
+    }
+});
 
     // تنظيف الرقم من المسافات أو الرموز
     phone = phone.replace(/[^0-9]/g, '');
