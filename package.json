@@ -1,7 +1,7 @@
 {
   "name": "fares-bot",
   "version": "1.0.0",
-  "description": "WhatsApp Pairing API",
+  "description": "WhatsApp Pairing API Professional",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -11,6 +11,9 @@
     "express": "^4.18.2",
     "pino": "^8.14.1",
     "path": "^0.12.7",
-    "qrcode-terminal": "^0.12.0"
+    "qrcode-terminal": "^0.12.0",
+    "fs-extra": "^11.1.1",
+    "axios": "^1.6.2",
+    "pino-pretty": "^10.2.3"
   }
 }
