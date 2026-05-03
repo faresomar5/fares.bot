@@ -1,0 +1,2115 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+<meta name="keywords" content="bot, whatsapp bot, golden queen bot, vimamods, status bot, md bot, sri lankan bot, automation, bot store, whatsapp automation, wa bot, queen bot, golden queen md, free bot, bot 2026, anti delete bot, auto react bot, group management bot, whatsapp bot script, nodejs bot, baileys bot, heroku bot, vps bot, stickers bot, music downloader bot, video downloader bot, ai bot, chat bot, whatsapp api bot, qr code bot, pairing code bot, golden queen team, open source bot, github bot, best bot in sri lanka, sinhala bot, tamil bot, free md bot, no ban bot, secure bot, queen bot store, plugin bot, bot deployment, automated bot, fast bot, unlimited bot, multi device bot, wa automation tool, bot website, queen bot official">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Golden Queen Bot multi-language WhatsApp device linking portal with pairing code and QR login support.">
+    <meta name="theme-color" content="#0d0d12">
+    <title>👑 Golden Queen Status Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@1,300;1,500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --bg: #0d0d12;
+            --card: #1a1a27;
+            --card2: #13131c;
+            --border: rgba(255,255,255,0.07);
+            --border-accent: rgba(212,160,85,0.35);
+            --gold: #d4a055;
+            --gold-light: #f0c880;
+            --rose: #e8697a;
+            --rose-light: #f5a0ac;
+            --text: #f0eaf5;
+            --muted: #8a849a;
+            --faint: #4a4460;
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 40% at 20% 10%, rgba(0,210,255,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 30% at 80% 80%, rgba(212,160,85,0.07) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: -100px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), var(--primary), var(--gold), transparent);
+            box-shadow: 0 0 12px var(--gold), 0 0 28px rgba(212,160,85,0.5);
+            z-index: 9999;
+            animation: laserMove 5s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes laserMove {
+            0%   { top: -2%; opacity: 0; }
+            8%   { opacity: 1; }
+            92%  { opacity: 1; }
+            100% { top: 105%; opacity: 0; }
+        }
+
+        .fade-in {
+            animation: smoothFade 0.7s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes smoothFade {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ═══════════════════════════
+           LANGUAGE OVERLAY
+        ═══════════════════════════ */
+        .langOverlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(14px);
+        }
+
+        .langBox {
+            text-align: center;
+            background: var(--card);
+            padding: 48px 40px;
+            border-radius: 28px;
+            border: 1px solid var(--border-accent);
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px var(--border);
+        }
+
+        .langBox-eyebrow {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--gold);
+            opacity: 0.8;
+            margin-bottom: 14px;
+        }
+
+        .langBox h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.7rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .langBox-sub {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 1rem;
+            color: var(--muted);
+            margin-bottom: 32px;
+        }
+
+        .lang-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .langBtn {
+            background: transparent;
+            border: 1px solid var(--border-accent);
+            padding: 14px 20px;
+            cursor: pointer;
+            border-radius: 14px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+            font-size: 0.92rem;
+            transition: all 0.25s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .langBtn .lang-flag { font-size: 1.4rem; }
+        .langBtn .lang-name { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+
+        .langBtn:hover {
+            background: rgba(212,160,85,0.1);
+            border-color: var(--gold);
+            color: var(--gold-light);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(212,160,85,0.15);
+        }
+
+        /* ═══════════════════════════
+           MAIN BODY
+        ═══════════════════════════ */
+        .mainBody {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            width: 100%;
+            text-align: center;
+            padding: 52px 20px 40px;
+        }
+
+        .header-eyebrow {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--gold);
+            opacity: 0.8;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.9rem, 5vw, 3rem);
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 10px;
+        }
+
+        .header h1 .accent {
+            background: linear-gradient(135deg, var(--gold), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-divider {
+            width: 52px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            margin: 16px auto;
+        }
+
+        .header-sub {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 1.1rem;
+            color: var(--muted);
+        }
+
+        .container {
+            max-width: 440px;
+            width: 92%;
+            margin: 0 auto;
+            padding-bottom: 60px;
+        }
+
+        .noticeBox {
+            background: rgba(0,210,255,0.06);
+            border: 1px solid rgba(0,210,255,0.2);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 22px;
+            font-size: 0.85rem;
+            line-height: 1.65;
+            color: rgba(0,210,255,0.85);
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .noticeBox-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ═══════════════════════════
+           TAB SWITCHER
+        ═══════════════════════════ */
+        .tab-switcher {
+            position: relative;
+            display: flex;
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 5px;
+            margin-bottom: 22px;
+            overflow: hidden;
+        }
+
+        .tab-pill {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: calc(50% - 5px);
+            height: calc(100% - 10px);
+            background: linear-gradient(135deg, rgba(212,160,85,0.18), rgba(0,210,255,0.10));
+            border: 1px solid var(--border-accent);
+            border-radius: 13px;
+            transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 16px rgba(212,160,85,0.12);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .tab-pill.right { transform: translateX(100%); }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 14px 10px;
+            color: var(--muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 13px;
+            transition: color 0.3s;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .tab-btn.active { color: var(--gold-light); }
+        .tab-btn .tab-icon { font-size: 1rem; }
+
+        /* ═══════════════════════════
+           TAB PANELS
+        ═══════════════════════════ */
+        .tab-content-wrap { position: relative; }
+
+        .tab-panel { transition: opacity 0.35s ease; }
+
+        .tab-panel.hidden { display: none; opacity: 0; }
+        .tab-panel.visible { display: block; opacity: 1; }
+
+        /* ═══════════════════════════
+           CARD
+        ═══════════════════════════ */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px 28px;
+            box-shadow: 0 20px 48px rgba(0,0,0,0.4);
+            transition: border-color 0.3s;
+        }
+
+        .card:hover { border-color: var(--border-accent); }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header-icon {
+            width: 40px; height: 40px;
+            background: rgba(0,210,255,0.1);
+            border: 1px solid rgba(0,210,255,0.2);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+
+        .card-header-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .card-header-sub {
+            font-size: 0.73rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .inputGroup { margin-bottom: 6px; }
+
+        .inputGroup label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .input-wrap { position: relative; }
+
+        .input-prefix {
+            position: absolute;
+            left: 16px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .inputGroup input {
+            width: 100%;
+            padding: 16px 16px 16px 42px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1rem;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.25s, background 0.25s;
+            letter-spacing: 0.04em;
+        }
+
+        .inputGroup input::placeholder { color: var(--faint); }
+        .inputGroup input:focus {
+            border-color: var(--gold);
+            background: rgba(212,160,85,0.04);
+        }
+
+        .submitBtn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--gold), #b8853a);
+            border: none;
+            padding: 18px;
+            margin-top: 22px;
+            color: #0d0d0d;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submitBtn::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .submitBtn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(212,160,85,0.35); }
+        .submitBtn:hover::before { opacity: 1; }
+        .submitBtn:active { transform: translateY(0); }
+
+        /* ═══════════════════════════
+           QR CARD
+        ═══════════════════════════ */
+        .qr-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px 28px;
+            box-shadow: 0 20px 48px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        .qr-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .qr-card-icon {
+            width: 40px; height: 40px;
+            background: rgba(212,160,85,0.1);
+            border: 1px solid rgba(212,160,85,0.25);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+
+        /* QR Frame */
+        .qr-frame {
+            position: relative;
+            width: 220px; height: 220px;
+            margin: 0 auto 24px;
+        }
+
+        .qr-frame::before, .qr-frame::after {
+            content: '';
+            position: absolute;
+            width: 24px; height: 24px;
+            border-color: var(--gold);
+            border-style: solid;
+            z-index: 2;
+        }
+        .qr-frame::before { top: -3px; left: -3px; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+        .qr-frame::after  { bottom: -3px; right: -3px; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+
+        .qr-corner-tr, .qr-corner-bl {
+            position: absolute;
+            width: 24px; height: 24px;
+            border-color: var(--gold);
+            border-style: solid;
+            z-index: 2;
+        }
+        .qr-corner-tr { top: -3px; right: -3px; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+        .qr-corner-bl { bottom: -3px; left: -3px; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+
+        .qr-img-wrap {
+            width: 100%; height: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+
+        #qrImage {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        #qrImage.loaded { display: block; opacity: 1; }
+
+        /* Scan line */
+        .qr-scan-line {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(0,210,255,0.9), transparent);
+            box-shadow: 0 0 10px rgba(0,210,255,0.6);
+            border-radius: 2px;
+            animation: scanLine 2.5s ease-in-out infinite;
+            z-index: 3;
+            pointer-events: none;
+            display: none;
+        }
+
+        .qr-scan-line.active { display: block; }
+
+        @keyframes scanLine {
+            0%   { top: 0%;   opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Skeleton */
+        .qr-skeleton {
+            width: 100%; height: 100%;
+            background: linear-gradient(110deg, #e0e0e0 8%, #f5f5f5 18%, #e0e0e0 33%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s linear infinite;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .qr-skeleton.active { display: block; }
+
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+        }
+
+        /* Placeholder */
+        .qr-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            color: var(--faint);
+            cursor: pointer;
+            width: 100%; height: 100%;
+            justify-content: center;
+            transition: opacity 0.3s;
+        }
+
+        .qr-placeholder:hover { opacity: 0.7; }
+
+        .qr-placeholder svg { width: 56px; height: 56px; opacity: 0.4; }
+
+        .qr-placeholder-text {
+            font-size: 0.75rem;
+            color: var(--faint);
+            letter-spacing: 0.05em;
+        }
+
+        /* Progress bar */
+        .qr-progress-wrap { margin-bottom: 20px; }
+
+        .qr-progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .qr-countdown {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            color: var(--gold-light);
+            font-weight: 600;
+            min-width: 30px;
+            text-align: right;
+            transition: color 0.3s;
+        }
+
+        .qr-countdown.urgent { color: var(--rose); }
+
+        .qr-progress-bar-bg {
+            height: 5px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .qr-progress-bar {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--gold), var(--primary));
+            box-shadow: 0 0 8px rgba(0,210,255,0.4);
+            transition: width 1s linear, background 0.3s;
+            width: 100%;
+        }
+
+        .qr-progress-bar.urgent {
+            background: linear-gradient(90deg, var(--rose), #ff4466);
+            box-shadow: 0 0 8px rgba(232,105,122,0.5);
+        }
+
+        .qr-status {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 20px;
+            min-height: 20px;
+            transition: color 0.3s;
+        }
+
+        /* Retry Button */
+        .qr-retry-btn {
+            display: none;
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border-accent);
+            padding: 16px;
+            color: var(--gold-light);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .qr-retry-btn:hover {
+            background: rgba(212,160,85,0.08);
+            border-color: var(--gold);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(212,160,85,0.18);
+        }
+
+        .qr-retry-btn:active { transform: scale(0.97); }
+        .qr-retry-btn.visible { display: block; }
+
+        /* Footer */
+        .footer-bar {
+            text-align: center;
+            border-top: 1px solid var(--border);
+            padding: 28px 20px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--gold), var(--rose-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .footer-copy { font-size: 0.7rem; color: var(--faint); letter-spacing: 0.05em; }
+
+        /* SweetAlert2 */
+        .swal2-popup {
+            background: var(--card) !important;
+            border: 1px solid var(--border-accent) !important;
+            border-radius: 20px !important;
+            color: var(--text) !important;
+            font-family: 'DM Sans', sans-serif !important;
+        }
+        .swal2-title { color: var(--text) !important; font-family: 'Playfair Display', serif !important; }
+        .swal2-html-container { color: var(--muted) !important; }
+        .swal2-confirm {
+            background: linear-gradient(135deg, var(--gold), #b8853a) !important;
+            color: #0d0d0d !important;
+            font-weight: 700 !important;
+            border-radius: 12px !important;
+            letter-spacing: 0.08em !important;
+            font-family: 'DM Sans', sans-serif !important;
+        }
+
+        @media (max-width: 480px) {
+            .header { padding: 40px 16px 32px; }
+            .card, .qr-card { padding: 24px 18px; }
+            .qr-frame { width: 190px; height: 190px; }
+        }
+/* Video Background Styling */
+.video-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1; /* අන්තර්ගතයට පිටුපසින් තැබීමට */
+    overflow: hidden;
+}
+
+#bgVideo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+}
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); 
+}
+
+
+.video-background.is-fallback video { display:none; }
+.video-background.is-fallback .video-overlay {
+    background:
+        radial-gradient(circle at top, rgba(0,210,255,0.12), transparent 40%),
+        radial-gradient(circle at bottom, rgba(212,160,85,0.14), transparent 35%),
+        rgba(8,8,12,0.92);
+}
+    
+    </style>
+</head>
+<body>
+<noscript><div style="max-width:720px;margin:24px auto;padding:16px 18px;border:1px solid #7a2f2f;background:#2a1515;color:#fff;border-radius:12px;font-family:Arial,sans-serif">This page requires JavaScript to work correctly.</div></noscript>
+
+<div class="video-background">
+    <video autoplay muted loop playsinline id="bgVideo">
+        <source src="" type="video/mp4">
+        Your browser does not support HTML5 video.
+    </video>
+    <div class="video-overlay"></div>
+</div>
+
+
+<!-- ══ LANGUAGE OVERLAY ══ -->
+<div id="langOverlay" class="langOverlay">
+    <div class="langBox fade-in">
+        <p class="langBox-eyebrow">✦ Golden Queen Bot ✦</p>
+        <h2>👑 Welcome</h2>
+        <p class="langBox-sub">Select your language to continue</p>
+        <div class="lang-grid">
+            <button class="langBtn" onclick="initPage('si')">
+                <span class="lang-flag">🇱🇰</span>
+                <span style="font-size:1rem;font-weight:700;">සිංහල</span>
+                <span class="lang-name">Sinhala</span>
+            </button>
+            <button class="langBtn" onclick="initPage('en')">
+                <span class="lang-flag">🇬🇧</span>
+                <span style="font-size:1rem;font-weight:700;">English</span>
+                <span class="lang-name">English</span>
+            </button>
+            <button class="langBtn" onclick="initPage('ta')">
+                <span class="lang-flag">🇮🇳</span>
+                <span style="font-size:1rem;font-weight:700;">தமிழ்</span>
+                <span class="lang-name">Tamil</span>
+            </button>
+            <button class="langBtn" onclick="initPage('ar')">
+                <span class="lang-flag">🇸🇦</span>
+                <span style="font-size:1rem;font-weight:700;">العربية</span>
+                <span class="lang-name">Arabic</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MAIN BODY ══ -->
+<div id="mainBody" class="mainBody">
+
+    <header class="header fade-in">
+        <p class="header-eyebrow">✦ Device Linking Portal ✦</p>
+        <h1 id="titleText"><span class="accent">Golden Queen</span> Bot</h1>
+        <div class="header-divider"></div>
+        <p class="header-sub" id="headerSub">Link your WhatsApp device below</p>
+    </header>
+
+    <div class="container">
+
+        <div id="noticeNews" class="noticeBox fade-in" style="animation-delay:0.15s;">
+            <span class="noticeBox-icon">📢</span>
+            <span id="noticeText"></span>
+        </div>
+
+        <div id="apiHint" class="noticeBox fade-in" style="display:none;animation-delay:0.18s;background:rgba(232,105,122,0.08);border-color:rgba(232,105,122,0.22);color:#f5a0ac;">
+            <span class="noticeBox-icon">⚙️</span>
+            <span id="apiHintText"></span>
+        </div>
+
+        <!-- Tab Switcher -->
+        <div class="tab-switcher fade-in" style="animation-delay:0.22s;">
+            <div class="tab-pill" id="tabPill"></div>
+            <button class="tab-btn active" id="tabPairing" onclick="switchTab('pairing')">
+                <span class="tab-icon">🔗</span>
+                <span id="tabPairingLabel">Pairing Code</span>
+            </button>
+            <button class="tab-btn" id="tabQr" onclick="switchTab('qr')">
+                <span class="tab-icon">📷</span>
+                <span id="tabQrLabel">QR Code</span>
+            </button>
+        </div>
+
+        <div class="tab-content-wrap">
+
+            <!-- ── PAIRING PANEL ── -->
+            <div id="panelPairing" class="tab-panel visible fade-in" style="animation-delay:0.28s;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-icon">🔐</div>
+                        <div>
+                            <div class="card-header-title" id="loginHeader"></div>
+                            <div class="card-header-sub" id="loginSubText"></div>
+                        </div>
+                    </div>
+                    <div class="inputGroup">
+                        <label id="numLabel"></label>
+                        <div class="input-wrap">
+                            <span class="input-prefix">📞</span>
+                            <input
+                                type="text"
+                                id="phoneNum"
+                                placeholder="201234567890"
+                                inputmode="tel"
+                                autocomplete="tel"
+                                maxlength="18"
+                                onkeydown="if(event.key==='Enter'){handleSubmit();}"
+                                oninput="this.value = this.value.replace(/[^0-9+ ]/g, '')"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="noticeBox fade-in" style="margin-top:14px;margin-bottom:0;background:rgba(109,212,154,0.06);border-color:rgba(109,212,154,0.18);color:#b7f4cc;animation-delay:0s;">
+                        <span class="noticeBox-icon">🛡️</span>
+                        <span id="pairingTipsText">Use full international format with country code. Official WhatsApp access via api.whatsapp.com has been added for faster pairing flow.</span>
+                    </div>
+
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+                        <a id="openWhatsappBtn" href="https://api.whatsapp.com" target="_blank" rel="noopener noreferrer" style="flex:1;min-width:180px;text-align:center;text-decoration:none;padding:12px 16px;border-radius:14px;border:1px solid rgba(37,211,102,0.35);background:rgba(37,211,102,0.10);color:#dfffe9;font-weight:700;">Open WhatsApp</a>
+                        <button type="button" id="setApiBtn" onclick="promptApiBase()" style="flex:1;min-width:180px;padding:12px 16px;border-radius:14px;border:1px solid var(--border-accent);background:rgba(212,160,85,0.08);color:var(--text);font-weight:700;cursor:pointer;">Set Backend API</button>
+                    </div>
+                </div>
+                <button class="submitBtn" id="submitBtn" onclick="handleSubmit()"></button>
+            </div>
+
+            <!-- ── QR PANEL ── -->
+            <div id="panelQr" class="tab-panel hidden">
+                <div class="qr-card">
+
+                    <div class="qr-card-header">
+                        <div class="qr-card-icon">📷</div>
+                        <div>
+                            <div class="card-header-title" id="qrHeader">QR Code Login</div>
+                            <div class="card-header-sub" id="qrSubText">Scan with WhatsApp to connect</div>
+                        </div>
+                    </div>
+
+                    <!-- QR Frame -->
+                    <div class="qr-frame">
+                        <div class="qr-corner-tr"></div>
+                        <div class="qr-corner-bl"></div>
+                        <div class="qr-img-wrap" id="qrImgWrap">
+                            <!-- Placeholder (click to load) -->
+                            <div class="qr-placeholder" id="qrPlaceholder" onclick="loadQr()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                    <rect x="14" y="14" width="3" height="3" rx="0.5"/>
+                                    <rect x="18" y="14" width="3" height="3" rx="0.5"/>
+                                    <rect x="14" y="18" width="3" height="3" rx="0.5"/>
+                                    <rect x="18" y="18" width="3" height="3" rx="0.5"/>
+                                </svg>
+                                <span class="qr-placeholder-text" id="qrPlaceholderText">Tap to load QR</span>
+                            </div>
+                            <!-- Skeleton shimmer -->
+                            <div class="qr-skeleton" id="qrSkeleton"></div>
+                            <!-- QR Image -->
+                            <img id="qrImage" alt="QR Code" />
+                            <!-- Scan line overlay -->
+                            <div class="qr-scan-line" id="qrScanLine"></div>
+                        </div>
+                    </div>
+
+                    <!-- Countdown progress -->
+                    <div class="qr-progress-wrap" id="qrProgressWrap" style="display:none;">
+                        <div class="qr-progress-label">
+                            <span id="qrRefreshLabel">Refreshing in</span>
+                            <span class="qr-countdown" id="qrCountdown">15</span>
+                        </div>
+                        <div class="qr-progress-bar-bg">
+                            <div class="qr-progress-bar" id="qrProgressBar"></div>
+                        </div>
+                    </div>
+
+                    <p class="qr-status" id="qrStatus"></p>
+
+                    <button class="qr-retry-btn" id="qrRetryBtn" onclick="retryQr()">
+                        ↺ &nbsp;<span id="qrRetryLabel">Try Again</span>
+                    </button>
+
+                </div>
+            </div>
+
+        </div><!-- /tab-content-wrap -->
+    </div><!-- /container -->
+
+
+    <footer class="footer-bar">
+        <div class="footer-brand">👑 Golden Queen Bot</div>
+        <div class="footer-copy">© 2024 Golden Queen · All rights reserved</div>
+    </footer>
+
+</div><!-- /mainBody -->
+
+<script>
+(() => {
+    window.GQ_CONFIG = Object.assign({
+        API_BASE: 'https://bot.goldenqueen.store',
+        PAIRING_PATH: '/api/pairing',
+        QR_PATH: 'https://bot.goldenqueen.store/api/qr',
+        PAIRING_PATHS: ['/api/pairing'],
+        QR_PATHS: ['https://bot.goldenqueen.store/api/qr', '/api/qr'],
+        WHATSAPP_API_BASE: 'https://api.whatsapp.com/send',
+        WHATSAPP_COOKIE_NAME: 'wa_ul',
+        WHATSAPP_COOKIE_DOMAIN: '.api.whatsapp.com',
+        WHATSAPP_COOKIE_PATH: '/send'
+    }, window.GQ_CONFIG || {});
+
+    const IMPORTED_COOKIE_JAR = [] /* removed embedded backup cookies; backend API is configured directly below */;
+
+    /* original cookie dump intentionally removed to avoid client-side cookie noise/privacy issues */
+    const UNUSED_IMPORTED_COOKIE_DUMP = [
+    {
+        "name": "prism_28990010",
+        "value": "5db43e83-b88c-43da-9051-bf3fb6b5375c",
+        "domain": "prism.app-us1.com",
+        "path": "/",
+        "expires": 1780084911.131721,
+        "httpOnly": true,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "sa-user-id",
+        "value": "s%3A0-c6b2b2d7-e3c1-571b-6f36-3911f8c5e28d.mfGrTBisPbdgMV%2B4%2BDHZsAYBhhVrN86nwx6poG4C21Y",
+        "domain": "sync.srv.stackadapt.com",
+        "path": "/",
+        "expires": 1809016930.452735,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "sa-user-id",
+        "value": "s%3A0-c6b2b2d7-e3c1-571b-6f36-3911f8c5e28d.mfGrTBisPbdgMV%2B4%2BDHZsAYBhhVrN86nwx6poG4C21Y",
+        "domain": ".srv.stackadapt.com",
+        "path": "/",
+        "expires": 1809016930.452923,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "sa-user-id-v2",
+        "value": "s%3AxrKy1-PBVxtvNjkR-MXijZbkC70.Ps73h68OD9TAQXWRZbfhD3b5%2BfFeSbyVNPO34b%2Bh5ZU",
+        "domain": "sync.srv.stackadapt.com",
+        "path": "/",
+        "expires": 1809016930.453007,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "sa-user-id-v2",
+        "value": "s%3AxrKy1-PBVxtvNjkR-MXijZbkC70.Ps73h68OD9TAQXWRZbfhD3b5%2BfFeSbyVNPO34b%2Bh5ZU",
+        "domain": ".srv.stackadapt.com",
+        "path": "/",
+        "expires": 1809016930.453204,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "sa-user-id-v3",
+        "value": "s%3AAQAKIBntoi5b629jW4UZI3izxFcjy8k24Hj-CjPr2o4p4JJIEAIYAyDi6cjPBjABOgQbBS5qQgQ1_W7I.a7dsvI6pabTGttFuxdPlIJQN6GxovFHMRLGrA4J8X9E",
+        "domain": "sync.srv.stackadapt.com",
+        "path": "/",
+        "expires": 1809016930.453281,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "sa-user-id-v3",
+        "value": "s%3AAQAKIBntoi5b629jW4UZI3izxFcjy8k24Hj-CjPr2o4p4JJIEAIYAyDi6cjPBjABOgQbBS5qQgQ1_W7I.a7dsvI6pabTGttFuxdPlIJQN6GxovFHMRLGrA4J8X9E",
+        "domain": ".srv.stackadapt.com",
+        "path": "/",
+        "expires": 1809016930.453355,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "TapAd_3WAY_SYNCS",
+        "value": "",
+        "domain": ".tapad.com",
+        "path": "/",
+        "expires": 1782664934.839517,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "TapAd_DID",
+        "value": "c7d04938-7581-415a-b790-464841927836",
+        "domain": ".tapad.com",
+        "path": "/",
+        "expires": 1782664934.839456,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "TapAd_TS",
+        "value": "1777480933662",
+        "domain": ".tapad.com",
+        "path": "/",
+        "expires": 1782664934.839316,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "uid_id2",
+        "value": "c427768b-6da7-4a0c-b2ec-5f3a39793698:3:1",
+        "domain": "sourshaped.com",
+        "path": "/",
+        "expires": 1778097731.528822,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "no_restriction"
+    },
+    {
+        "name": "wa_lang_pref",
+        "value": "ar",
+        "domain": ".whatsapp.com",
+        "path": "/",
+        "expires": 1778137175.416706,
+        "httpOnly": false,
+        "secure": true,
+        "sameSite": "lax"
+    },
+    {
+        "name": "wa_ul",
+        "value": "a5ca8125-d666-4c12-a0b9-236fe72330a7",
+        "domain": ".api.whatsapp.com",
+        "path": "/send",
+        "expires": 1785356433.472193,
+        "httpOnly": true,
+        "secure": true,
+        "sameSite": "lax"
+    },
+    {
+        "name": "wa_ul",
+        "value": "147951d3-ec34-40d9-aeef-4c79b5ed9c48",
+        "domain": ".www.whatsapp.com",
+        "path": "/",
+        "expires": 1785308375.416948,
+        "httpOnly": true,
+        "secure": true,
+        "sameSite": "lax"
+    }
+];
+
+    const API = {
+        pairing: (window.GQ_CONFIG && window.GQ_CONFIG.PAIRING_PATH) || '/api/pairing',
+        qr: (window.GQ_CONFIG && window.GQ_CONFIG.QR_PATH) || '/api/qr'
+    };
+
+    function normalizeBaseUrl(value, fallback = '') {
+        const raw = String(value || '').trim().replace(/\/+$/, '');
+        if (!raw) return fallback;
+        if (/^https?:\/\//i.test(raw)) return raw;
+        return `https://${raw}`;
+    }
+
+    const OFFICIAL_WHATSAPP_API = normalizeBaseUrl(
+        (window.GQ_CONFIG && window.GQ_CONFIG.WHATSAPP_API_BASE) || 'https://api.whatsapp.com/send',
+        'https://api.whatsapp.com/send'
+    );
+
+    function uniqueList(items) {
+        return Array.from(new Set((items || []).filter(Boolean).map((item) => String(item).trim()).filter(Boolean)));
+    }
+
+    function sanitizeCookieItem(item) {
+        if (!item || typeof item !== 'object' || !item.name) return null;
+        return {
+            name: String(item.name || '').trim(),
+            value: String(item.value || ''),
+            domain: String(item.domain || '').trim(),
+            path: String(item.path || '/').trim() || '/',
+            expires: Number(item.expires || 0),
+            httpOnly: Boolean(item.httpOnly),
+            secure: Boolean(item.secure),
+            sameSite: String(item.sameSite || '').trim()
+        };
+    }
+
+    const IMPORTED_COOKIES = Array.isArray(IMPORTED_COOKIE_JAR)
+        ? IMPORTED_COOKIE_JAR.map(sanitizeCookieItem).filter(Boolean)
+        : [];
+
+    const APP_CONFIG = {
+        apiBase: (() => {
+            const fromConfig = window.GQ_CONFIG && typeof window.GQ_CONFIG.API_BASE === 'string'
+                ? window.GQ_CONFIG.API_BASE
+                : '';
+            const fromQuery = new URLSearchParams(window.location.search).get('api');
+            const fromWindow = typeof window.API_BASE === 'string' ? window.API_BASE : '';
+            const fromStorage = localStorage.getItem('GQ_API_BASE') || '';
+            const rawValue = (fromConfig || fromQuery || fromWindow || fromStorage || '').trim();
+            const value = normalizeBaseUrl(rawValue, '');
+            if (fromQuery) localStorage.setItem('GQ_API_BASE', value);
+            return value;
+        })(),
+        pairingPaths: uniqueList([
+            API.pairing,
+            ...(((window.GQ_CONFIG && window.GQ_CONFIG.PAIRING_PATHS) || []).map((item) => String(item || '').trim()))
+        ]),
+        qrPaths: uniqueList([
+            API.qr,
+            ...(((window.GQ_CONFIG && window.GQ_CONFIG.QR_PATHS) || []).map((item) => String(item || '').trim()))
+        ]),
+        whatsappApi: OFFICIAL_WHATSAPP_API,
+        whatsappSendPath: (window.GQ_CONFIG && window.GQ_CONFIG.WHATSAPP_SEND_PATH) || '/send',
+        importedCookies: IMPORTED_COOKIES,
+        whatsappCookieNote: 'A third-party HttpOnly cookie for api.whatsapp.com cannot be injected from this HTML page. If WhatsApp authentication is required, handle it in your backend or in your own browser session.'
+    };
+
+    const REQUEST_TIMEOUT = 25000;
+    const QR_INTERVAL = 20;
+    const QR_MAX_RETRY = 4;
+
+    const langTexts = {
+        en: {
+            title: '👑 Golden Queen Status Bot',
+            headerSub: 'Link your WhatsApp device below',
+            btn: '🔗 Link Device',
+            loginHeader: 'Connection Details',
+            loginSub: 'Enter your WhatsApp number to receive a pairing code',
+            numLabel: '📞 WhatsApp Number',
+            notice: 'After linking the device, it takes about 3 minutes for the bot to become active. Please stay tuned! ⏳✨',
+            loading: '⏳ Processing...',
+            wait: 'Please wait while we connect...',
+            invalidNum: 'Please enter a valid phone number!',
+            fillAll: 'Please fill all required fields!',
+            successTitle: '🎉 Success!',
+            successBody: 'Your Pairing Code is:',
+            copyMsg: '📋 Copied to your Clipboard!',
+            failMsg: 'Connection failed. Please try again.',
+            tabPairing: 'Pairing Code',
+            tabQr: 'QR Code',
+            qrHeader: 'QR Code Login',
+            qrSub: 'Scan with WhatsApp to connect',
+            qrPlaceholder: 'Tap to load QR',
+            qrRefreshLabel: 'Refreshing in',
+            qrRetryLabel: 'Try Again',
+            qrLoading: 'Loading QR code...',
+            qrLoaded: 'Scan this QR code with your WhatsApp',
+            qrFailed: 'Failed to load QR. Please retry.',
+            qrMaxRetry: 'Max retries reached. Please try again later.',
+            apiHint: 'Backend API is preconfigured to https://bot.goldenqueen.store and QR is linked to https://bot.goldenqueen.store/api/qr',
+            localApiHint: 'This file is already configured to use https://bot.goldenqueen.store for pairing and https://bot.goldenqueen.store/api/qr for QR.',
+            cookieInfo: 'Important: a third-party HttpOnly cookie for api.whatsapp.com cannot be injected from this page. If your flow needs an authenticated WhatsApp session, handle it from your backend or your own browser session.',
+            backendRequired: 'Configured backend: https://bot.goldenqueen.store • Pairing: POST /api/pairing • QR: GET https://bot.goldenqueen.store/api/qr',
+            timeoutMsg: 'Connection timed out. Check the backend and try again.',
+            networkFail: 'Cannot reach the backend. Check API_BASE and CORS settings.',
+            pairingTips: 'Use full international format with country code. Official WhatsApp access via api.whatsapp.com has been added for a faster pairing flow.',
+            openWhatsapp: 'Open WhatsApp',
+            setApi: 'Set Backend API',
+            apiSaved: 'Backend API URL saved successfully.',
+            apiRemoved: 'Saved backend API URL removed.',
+            apiPromptTitle: 'Backend API Base URL',
+            apiPromptPlaceholder: 'https://bot.goldenqueen.store',
+            apiPromptHelp: 'Default backend is https://bot.goldenqueen.store — enter only the domain without /api/pairing or /api/qr if you want to override it.',
+            apiPromptInvalid: 'Enter a valid URL that starts with https:// or a valid domain.',
+            currentApiLabel: 'Current API',
+            successSteps: 'Open WhatsApp, go to Linked Devices, choose Link with phone number, then enter the code below.',
+            done: 'Done'
+        },
+        si: {
+            title: '👑 Golden Queen Status Bot',
+            headerSub: 'ඔබේ WhatsApp සම්බන්ධ කරන්න',
+            btn: '🔗 සම්බන්ධ කරන්න',
+            loginHeader: 'සම්බන්ධතාවය',
+            loginSub: 'Pairing Code ලබා ගැනීමට අංකය ඇතුළත් කරන්න',
+            numLabel: 'WhatsApp අංකය',
+            notice: 'Bot Link Device කල පසු සක්‍රීය වීමට විනාඩි 3ක් ගතවේ. රැඳී සිටින්න! ⏳✨',
+            loading: '⏳ සැකසෙමින් ...',
+            wait: 'සම්බන්ධ වන තෙක් රැඳී සිටින්න...',
+            invalidNum: 'නිවැරදි දුරකථන අංකයක් ඇතුළත් කරන්න!',
+            fillAll: 'සියලුම විස්තර පුරවන්න!',
+            successTitle: '🎉 සාර්ථකයි!',
+            successBody: 'ඔබේ Pairing Code:',
+            copyMsg: '📋 Clipboard එකට පිටපත් විය!',
+            failMsg: 'සම්බන්ධතාවය අසාර්ථකයි. නැවත උත්සාහ කරන්න.',
+            tabPairing: 'Pairing Code',
+            tabQr: 'QR Code',
+            qrHeader: 'QR Code Login',
+            qrSub: 'WhatsApp දී Scan කරන්න',
+            qrPlaceholder: 'QR Load කරන්න',
+            qrRefreshLabel: 'නැවත load වීමට',
+            qrRetryLabel: 'නැවත උත්සාහ කරන්න',
+            qrLoading: 'QR Code ලෝඩ් වෙමින්...',
+            qrLoaded: 'WhatsApp දී මෙම QR Code Scan කරන්න',
+            qrFailed: 'QR load අසාර්ථකයි. නැවත උත්සාහ කරන්න.',
+            qrMaxRetry: 'උපරිම උත්සාහ ගණන ඉක්මවිය. පසුව නැවත උත්සාහ කරන්න.',
+            apiHint: 'Backend API එක https://bot.goldenqueen.store ලෙස preconfigure කරලා තියෙනවා. QR එක https://bot.goldenqueen.store/api/qr එකට link කරලා තියෙනවා.',
+            localApiHint: 'මෙම file එක pairing සඳහා https://bot.goldenqueen.store සහ QR සඳහා https://bot.goldenqueen.store/api/qr use කරන ලෙස configure කරලා තියෙනවා.',
+            cookieInfo: 'වැදගත්: api.whatsapp.com සඳහා ඇති third-party HttpOnly cookie එක මෙම page එකෙන් inject කරන්න බැහැ. WhatsApp session එක backend එකෙන් හෝ ඔබේ browser session එකෙන් handle කරන්න.',
+            backendRequired: 'Configured backend: https://bot.goldenqueen.store • Pairing: POST /api/pairing • QR: GET https://bot.goldenqueen.store/api/qr',
+            timeoutMsg: 'Connection timeout වුණා. Backend එක check කරලා නැවත උත්සාහ කරන්න.',
+            networkFail: 'Backend එකට reach වෙන්න බැහැ. API_BASE සහ CORS settings check කරන්න.',
+            pairingTips: 'Country code සමඟ full international format එක භාවිතා කරන්න. Official WhatsApp access එක api.whatsapp.com හරහා speed up කරලා තියෙනවා.',
+            openWhatsapp: 'WhatsApp අරින්න',
+            setApi: 'Backend API සකසන්න',
+            apiSaved: 'Backend API URL save වුණා.',
+            apiRemoved: 'Save කරපු backend API URL remove වුණා.',
+            apiPromptTitle: 'Backend API Base URL',
+            apiPromptPlaceholder: 'https://bot.goldenqueen.store',
+            apiPromptHelp: 'Default backend එක https://bot.goldenqueen.store. වෙනස් කරන්න නම් domain එක විතරක් දෙන්න; /api/pairing හෝ /api/qr add කරන්න එපා.',
+            apiPromptInvalid: 'නිවැරදි URL එකක් හෝ domain එකක් දෙන්න.',
+            currentApiLabel: 'Current API',
+            successSteps: 'WhatsApp > Linked Devices > Link with phone number වෙත ගොස් පහත code එක ඇතුළත් කරන්න.',
+            done: 'Done'
+        },
+        ta: {
+            title: '👑 Golden Queen Status Bot',
+            headerSub: 'உங்கள் WhatsApp இணைக்கவும்',
+            btn: '🔗 இணைக்கவும்',
+            loginHeader: 'இணைப்பு விவரங்கள்',
+            loginSub: 'இணைப்பு குறியீட்டிற்கு உங்கள் எண்ணை உள்ளிடவும்',
+            numLabel: 'வாட்ஸ்அப் எண்',
+            notice: 'சாதனத்தை இணைத்த பிறகு, பாட் செயலில் வர சுமார் 3 நிமிடங்கள் ஆகும். காத்திருக்கவும்! ⏳✨',
+            loading: '⏳ செயலாக்கம்...',
+            wait: 'காத்திருக்கவும்...',
+            invalidNum: 'சரியான எண்ணை உள்ளிடவும்!',
+            fillAll: 'விவரங்களை நிரப்பவும்!',
+            successTitle: '🎉 வெற்றி!',
+            successBody: 'உங்கள் குறியீடு:',
+            copyMsg: '📋 நகலெடுக்கப்பட்டது!',
+            failMsg: 'தோல்வி. மீண்டும் முயற்சிக்கவும்.',
+            tabPairing: 'Pairing Code',
+            tabQr: 'QR Code',
+            qrHeader: 'QR Code உள்நுழைவு',
+            qrSub: 'WhatsApp மூலம் ஸ்கேன் செய்யவும்',
+            qrPlaceholder: 'QR ஏற்றவும்',
+            qrRefreshLabel: 'புதுப்பிக்கிறது',
+            qrRetryLabel: 'மீண்டும் முயற்சி',
+            qrLoading: 'QR Code ஏற்றுகிறது...',
+            qrLoaded: 'WhatsApp மூலம் இந்த QR ஸ்கேன் செய்யவும்',
+            qrFailed: 'QR ஏற்றல் தோல்வி. மீண்டும் முயற்சி.',
+            qrMaxRetry: 'அதிகபட்ச முயற்சிகள் தோல்வி.',
+            apiHint: 'Backend API ஏற்கனவே https://bot.goldenqueen.store ஆக அமைக்கப்பட்டுள்ளது. QR, https://bot.goldenqueen.store/api/qr-க்கு இணைக்கப்பட்டுள்ளது.',
+            localApiHint: 'இந்த file pairing-க்கு https://bot.goldenqueen.store மற்றும் QR-க்கு https://bot.goldenqueen.store/api/qr பயன்படுத்தும் வகையில் அமைக்கப்பட்டுள்ளது.',
+            cookieInfo: 'முக்கியம்: api.whatsapp.com-க்கான third-party HttpOnly cookie-ஐ இந்த page-இலிருந்து inject செய்ய முடியாது. WhatsApp session தேவைப்பட்டால் backend அல்லது உங்கள் browser session மூலம் handle செய்யவும்.',
+            backendRequired: 'Configured backend: https://bot.goldenqueen.store • Pairing: POST /api/pairing • QR: GET https://bot.goldenqueen.store/api/qr',
+            timeoutMsg: 'Connection timeout. Backend-ஐ சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
+            networkFail: 'Backend-ஐ அணுக முடியவில்லை. API_BASE மற்றும் CORS அமைப்புகளை சரிபார்க்கவும்.',
+            pairingTips: 'Country code உடன் full international format பயன்படுத்தவும். api.whatsapp.com மூலம் official WhatsApp access சேர்க்கப்பட்டுள்ளது.',
+            openWhatsapp: 'WhatsApp திறக்க',
+            setApi: 'Backend API அமைக்க',
+            apiSaved: 'Backend API URL சேமிக்கப்பட்டது.',
+            apiRemoved: 'சேமித்த backend API URL நீக்கப்பட்டது.',
+            apiPromptTitle: 'Backend API Base URL',
+            apiPromptPlaceholder: 'https://bot.goldenqueen.store',
+            apiPromptHelp: 'Default backend https://bot.goldenqueen.store. மாற்ற வேண்டுமெனில் domain மட்டும் தரவும்; /api/pairing அல்லது /api/qr சேர்க்க வேண்டாம்.',
+            apiPromptInvalid: 'சரியான URL அல்லது domain அளிக்கவும்.',
+            currentApiLabel: 'Current API',
+            successSteps: 'WhatsApp > Linked Devices > Link with phone number சென்று கீழே உள்ள code-ஐ உள்ளிடவும்.',
+            done: 'Done'
+        },
+        ar: {
+            title: '👑 Golden Queen Status Bot',
+            headerSub: 'قم بربط جهاز WhatsApp الخاص بك',
+            btn: '🔗 ربط الجهاز',
+            loginHeader: 'تفاصيل الاتصال',
+            loginSub: 'أدخل رقمك لتلقي رمز الإقران',
+            numLabel: 'رقم الواتساب',
+            notice: 'بعد ربط الجهاز، يستغرق تفعيل البوت حوالي 3 دقائق. يرجى الانتظار! ⏳✨',
+            loading: '⏳ جاري المعالجة...',
+            wait: 'يرجى الانتظار...',
+            invalidNum: 'أدخل رقماً صحيحاً!',
+            fillAll: 'يرجى ملء الحقول!',
+            successTitle: '🎉 نجاح!',
+            successBody: 'رمز الإقران الخاص بك:',
+            copyMsg: '📋 تم النسخ!',
+            failMsg: 'فشل. حاول مرة أخرى.',
+            tabPairing: 'رمز الإقران',
+            tabQr: 'رمز QR',
+            qrHeader: 'تسجيل الدخول بـ QR',
+            qrSub: 'امسح باستخدام WhatsApp للاتصال',
+            qrPlaceholder: 'انقر لتحميل QR',
+            qrRefreshLabel: 'التحديث في',
+            qrRetryLabel: 'حاول مجدداً',
+            qrLoading: 'جاري تحميل QR...',
+            qrLoaded: 'امسح رمز QR هذا باستخدام WhatsApp',
+            qrFailed: 'فشل تحميل QR. حاول مجدداً.',
+            qrMaxRetry: 'تم تجاوز الحد الأقصى للمحاولات.',
+            apiHint: 'تم ضبط الباك إند مسبقاً على https://bot.goldenqueen.store وربط QR على https://bot.goldenqueen.store/api/qr',
+            localApiHint: 'هذا الملف مُعد مسبقاً لاستخدام https://bot.goldenqueen.store للاقتران و https://bot.goldenqueen.store/api/qr لرمز QR.',
+            pairingTips: 'اكتب الرقم بالصيغة الدولية مع رمز الدولة. تمت إضافة api.whatsapp.com للوصول الرسمي إلى واتساب وتسريع خطوات الاقتران.',
+            openWhatsapp: 'فتح WhatsApp',
+            setApi: 'ضبط API الخلفي',
+            apiSaved: 'تم حفظ رابط الـ API بنجاح.',
+            apiRemoved: 'تم حذف رابط الـ API المحفوظ.',
+            apiPromptTitle: 'رابط API الخلفي',
+            apiPromptPlaceholder: 'https://bot.goldenqueen.store',
+            apiPromptHelp: 'الدومين الافتراضي هو https://bot.goldenqueen.store — إذا أردت تغييره أدخل الدومين فقط بدون /api/pairing أو /api/qr',
+            apiPromptInvalid: 'أدخل رابطاً صحيحاً يبدأ بـ https:// أو اسم دومين صالح.',
+            currentApiLabel: 'API الحالي',
+            cookieInfo: 'مهم: لا يمكن للواجهة الأمامية حقن Cookie خارجي من نوع HttpOnly خاص بـ api.whatsapp.com. إذا كان الخادم يحتاج جلسة واتساب فقم بتمريرها من الباك إند أو افتح واتساب من المتصفح نفسه.',
+            backendRequired: 'الباك إند المضبوط: https://bot.goldenqueen.store • الاقتران: POST /api/pairing • QR: GET https://bot.goldenqueen.store/api/qr',
+            timeoutMsg: 'انتهت مهلة الاتصال. تحقق من الخادم ثم حاول مرة أخرى.',
+            networkFail: 'تعذر الوصول إلى الخادم. تأكد من رابط الـ API أو من السماح بطلبات CORS.',
+            successSteps: 'افتح WhatsApp ثم الأجهزة المرتبطة ثم الربط عبر رقم الهاتف وأدخل الكود التالي.',
+            done: 'تم'
+        }
+    };
+
+    let currentLang = 'en';
+    let currentTab = 'pairing';
+
+    const qrState = {
+        countdownInt: null,
+        retryCount: 0,
+        everLoaded: false,
+        loading: false,
+        secondsLeft: QR_INTERVAL,
+        objectUrl: ''
+    };
+
+    function isHttpOrigin() {
+        return window.location.protocol === 'http:' || window.location.protocol === 'https:';
+    }
+
+    function getApiMissingMessage() {
+        const messages = {
+            ar: 'الصفحة مفتوحة كملف محلي، لذلك /api لن يعمل. افتح الموقع من رابط http/https أو ضع API_BASE داخل هذا الملف أو أضف رابط الـ API بهذه الصيغة: ?api=https://your-domain.com',
+            si: 'මෙම පිටුව local file එකක් ලෙස open කරලා තියෙන නිසා /api වැඩ කරන්නේ නැහැ. http/https link එකකින් open කරන්න, මෙම file එකේ API_BASE set කරන්න, නැත්නම් ?api=https://your-domain.com එක add කරන්න.',
+            ta: 'இந்த பக்கம் local file ஆக திறக்கப்பட்டுள்ளது. அதனால் /api வேலை செய்யாது. http/https லிங்கில் திறக்கவும், இந்த file-இல் API_BASE அமைக்கவும், அல்லது ?api=https://your-domain.com சேர்க்கவும்.',
+            en: 'This page is opened as a local file, so /api will not work. Open it from an http/https URL, set API_BASE in this file, or append ?api=https://your-domain.com'
+        };
+        return messages[currentLang] || messages.en;
+    }
+
+    function normalizeEndpointPath(path) {
+        const raw = String(path || '').trim();
+        if (!raw) return '';
+        if (/^https?:\/\//i.test(raw)) return raw;
+        return raw.startsWith('/') ? raw : `/${raw}`;
+    }
+
+    function resolveEndpoint(path) {
+        const normalized = normalizeEndpointPath(path);
+        if (!normalized) throw new Error('Missing endpoint path');
+        if (/^https?:\/\//i.test(normalized)) return normalized;
+        if (APP_CONFIG.apiBase) return `${APP_CONFIG.apiBase}${normalized}`;
+        if (isHttpOrigin()) return `${window.location.origin}${normalized}`;
+        throw new Error(getApiMissingMessage());
+    }
+
+    function resolveEndpointCandidates(kind) {
+        const paths = kind === 'pairing' ? APP_CONFIG.pairingPaths : APP_CONFIG.qrPaths;
+        return uniqueList(paths.map((path) => resolveEndpoint(path)));
+    }
+
+    function cookieDomainMatchesCurrentHost(domain) {
+        const host = window.location.hostname || '';
+        const normalized = String(domain || '').replace(/^\./, '').toLowerCase();
+        if (!host || !normalized) return false;
+        const lowerHost = host.toLowerCase();
+        return lowerHost === normalized || lowerHost.endsWith(`.${normalized}`);
+    }
+
+    function getImportedCookiesByMatcher(matcher) {
+        return (APP_CONFIG.importedCookies || []).filter((cookie) => {
+            try {
+                return matcher(cookie);
+            } catch (_) {
+                return false;
+            }
+        });
+    }
+
+    function getWhatsAppImportedCookies() {
+        return getImportedCookiesByMatcher((cookie) => /(^|\.)whatsapp\.com$/i.test(String(cookie.domain || '').replace(/^\./, '')) || /(^|\.)api\.whatsapp\.com$/i.test(String(cookie.domain || '').replace(/^\./, '')));
+    }
+
+    function getImportedCookieValue(names, domainNeedle = '') {
+        const nameSet = new Set((Array.isArray(names) ? names : [names]).map((name) => String(name || '').trim()).filter(Boolean));
+        const domainMatch = String(domainNeedle || '').trim().toLowerCase();
+        const found = (APP_CONFIG.importedCookies || []).find((cookie) => {
+            if (!nameSet.has(cookie.name)) return false;
+            if (!domainMatch) return true;
+            return String(cookie.domain || '').toLowerCase().includes(domainMatch);
+        });
+        return found ? found.value : '';
+    }
+
+    function serializeCookies(cookies) {
+        return (cookies || []).map((cookie) => `${encodeURIComponent(cookie.name)}=${cookie.value}`).join('; ');
+    }
+
+    function buildRequestHeaders(extraHeaders = {}) {
+        const headers = Object.assign({}, extraHeaders || {});
+        const whatsappCookies = getWhatsAppImportedCookies();
+        if (whatsappCookies.length) {
+            headers['X-GQ-Imported-Cookies'] = JSON.stringify(whatsappCookies);
+            headers['X-GQ-WhatsApp-Cookies'] = serializeCookies(whatsappCookies);
+            headers['X-GQ-Imported-Cookie-Names'] = whatsappCookies.map((cookie) => cookie.name).join(', ');
+        }
+        const waUl = getImportedCookieValue(['wa_ul'], 'whatsapp.com');
+        if (waUl) headers['X-GQ-WA-UL'] = waUl;
+        const waLang = getImportedCookieValue(['wa_lang_pref'], 'whatsapp.com');
+        if (waLang) headers['X-GQ-WA-LANG'] = waLang;
+        return headers;
+    }
+
+    function applyImportedCookiesForCurrentHost() {
+        (APP_CONFIG.importedCookies || []).forEach((cookie) => {
+            if (!cookie || cookie.httpOnly || !cookieDomainMatchesCurrentHost(cookie.domain)) return;
+            try {
+                const maxAge = cookie.expires ? Math.max(0, Math.floor(cookie.expires - (Date.now() / 1000))) : 31536000;
+                document.cookie = `${encodeURIComponent(cookie.name)}=${cookie.value}; path=${cookie.path || '/'}; max-age=${maxAge}; SameSite=${cookie.sameSite || 'Lax'}${cookie.secure ? '; Secure' : ''}`;
+            } catch (_) {}
+        });
+    }
+
+    function looksLikeSvgMarkup(value) {
+        return /^<svg[\s\S]*<\/svg>$/i.test(String(value || '').trim());
+    }
+
+    function buildQrImageSource(value) {
+        const trimmed = String(value || '').trim();
+        if (!trimmed) return '';
+        if (looksLikeQrImageSource(trimmed)) return trimmed;
+        if (looksLikeSvgMarkup(trimmed)) return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(trimmed)}`;
+        if (trimmed.length >= 12) return `https://quickchart.io/qr?size=320&margin=1&text=${encodeURIComponent(trimmed)}`;
+        return '';
+    }
+
+    async function postForm(endpoint, payload) {
+        const url = resolveEndpoint(endpoint);
+        const body = new URLSearchParams();
+        Object.entries(payload || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && `${value}`.trim() !== '') body.set(key, `${value}`);
+        });
+        const res = await fetchWithTimeout(url, {
+            method: 'POST',
+            headers: buildRequestHeaders({
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                Accept: 'application/json, text/plain, */*'
+            }),
+            body: body.toString(),
+            credentials: APP_CONFIG.apiBase ? 'omit' : 'same-origin'
+        });
+        const contentType = res.headers.get('content-type') || '';
+        const responseBody = contentType.includes('application/json')
+            ? await res.json().catch(() => ({}))
+            : { error: await res.text().catch(() => '') };
+        if (!res.ok) throw new Error(responseBody.error || responseBody.message || `HTTP ${res.status}`);
+        return responseBody;
+    }
+
+    async function tryPairingCandidates(payload) {
+        const endpoints = resolveEndpointCandidates('pairing');
+        let lastError = null;
+        for (const endpoint of endpoints) {
+            const path = endpoint.replace(/^https?:\/\/[^/]+/i, '') || endpoint;
+            const attempts = [
+                () => post(path, payload),
+                () => postForm(path, payload),
+                () => get(path, payload)
+            ];
+            for (const attempt of attempts) {
+                try {
+                    const result = await attempt();
+                    const pairingCode = extractPairingCode(result);
+                    if (pairingCode || (result && (result.success || result.status === 'success'))) return result;
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+        }
+        throw lastError || new Error('Failed to request pairing code');
+    }
+
+    async function fetchQrFromCandidates(t) {
+        const endpoints = resolveEndpointCandidates('qr');
+        let lastError = null;
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetchWithTimeout(`${endpoint}${endpoint.includes('?') ? '&' : '?'}t=${Date.now()}`, {
+                    method: 'GET',
+                    headers: buildRequestHeaders({ Accept: 'image/*, application/json, text/plain, */*' }),
+                    credentials: APP_CONFIG.apiBase ? 'omit' : 'same-origin'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const contentType = (response.headers.get('content-type') || '').toLowerCase();
+                if (contentType.startsWith('image/')) {
+                    const blob = await response.blob();
+                    cleanupQrObjectUrl();
+                    qrState.objectUrl = URL.createObjectURL(blob);
+                    return { src: qrState.objectUrl, fromBlob: true };
+                }
+                if (contentType.includes('application/json')) {
+                    const data = await response.json().catch(() => ({}));
+                    const candidate = buildQrImageSource(extractQrSource(data));
+                    if (candidate) return { src: candidate, fromBlob: false };
+                    throw new Error(t.qrFailed);
+                }
+                const text = (await response.text().catch(() => '')).trim();
+                const candidate = buildQrImageSource(text);
+                if (candidate) return { src: candidate, fromBlob: false };
+                throw new Error(t.qrFailed);
+            } catch (error) {
+                lastError = error;
+            }
+        }
+        throw lastError || new Error(t.qrFailed);
+    }
+
+    function normalizePhoneNumber(raw) {
+        let phone = String(raw || '').replace(/[^\d+]/g, '');
+        if (phone.startsWith('+')) phone = phone.slice(1);
+        if (phone.startsWith('00')) phone = phone.slice(2);
+        return phone.replace(/\s+/g, '');
+    }
+
+    function getFriendlyErrorMessage(error, t) {
+        const message = String(error && error.message ? error.message : '').trim();
+        if (!message) return t.failMsg;
+        if (/aborted|timeout/i.test(message)) return t.timeoutMsg || t.failMsg;
+        if (/Failed to fetch|NetworkError|Load failed|ERR_/i.test(message)) return t.networkFail || t.failMsg;
+        return message;
+    }
+
+    async function promptApiBase() {
+        const t = langTexts[currentLang] || langTexts.en;
+        const result = await Swal.fire({
+            title: t.apiPromptTitle || 'Backend API Base URL',
+            input: 'text',
+            inputValue: APP_CONFIG.apiBase || '',
+            inputPlaceholder: t.apiPromptPlaceholder || 'https://your-domain.com',
+            inputAttributes: {
+                autocapitalize: 'off',
+                autocorrect: 'off',
+                spellcheck: 'false'
+            },
+            footer: t.apiPromptHelp || 'Enter only the backend domain, without /api/pairing or /api/qr',
+            showCancelButton: true,
+            showDenyButton: !!APP_CONFIG.apiBase,
+            denyButtonText: 'Clear',
+            confirmButtonText: 'Save',
+            background: 'var(--card)',
+            color: 'var(--text)',
+            inputValidator: (value) => {
+                const trimmed = String(value || '').trim();
+                if (!trimmed) return t.fillAll || 'Required';
+                if (!/^https?:\/\//i.test(trimmed) && !/^[a-z0-9.-]+(?:\:[0-9]+)?$/i.test(trimmed)) {
+                    return t.apiPromptInvalid || 'Enter a valid URL';
+                }
+                return null;
+            }
+        });
+
+        if (result.isDenied) {
+            APP_CONFIG.apiBase = '';
+            localStorage.removeItem('GQ_API_BASE');
+            updateApiHint();
+            Swal.fire(t.successTitle || 'Done', t.apiRemoved || 'Saved API removed.', 'success');
+            return;
+        }
+
+        if (!result.isConfirmed) return;
+
+        APP_CONFIG.apiBase = normalizeBaseUrl(result.value, '');
+        localStorage.setItem('GQ_API_BASE', APP_CONFIG.apiBase);
+        updateApiHint();
+        Swal.fire(t.successTitle || 'Done', t.apiSaved || 'API saved successfully.', 'success');
+    }
+
+    function getWhatsAppLaunchUrl(phone = '') {
+        const base = APP_CONFIG.whatsappApi || OFFICIAL_WHATSAPP_API;
+        const normalizedPhone = normalizePhoneNumber(phone || '');
+        if (!normalizedPhone) return base;
+        const separator = base.includes('?') ? '&' : '?';
+        return `${base}${separator}phone=${encodeURIComponent(normalizedPhone)}`;
+    }
+
+    function initPage(lang) {
+        currentLang = lang;
+        localStorage.setItem('GQ_LANG', lang);
+        document.getElementById('langOverlay').style.display = 'none';
+        const mb = document.getElementById('mainBody');
+        mb.style.display = 'flex';
+        updateTexts();
+    }
+
+    function updateTexts() {
+        const t = langTexts[currentLang] || langTexts.en;
+        document.documentElement.lang = currentLang;
+        document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+        document.title = t.title;
+        document.getElementById('titleText').innerHTML = '<span class="accent">Golden Queen</span> Bot';
+        document.getElementById('headerSub').innerText = t.headerSub;
+        document.getElementById('loginHeader').innerText = t.loginHeader;
+        document.getElementById('loginSubText').innerText = t.loginSub;
+        document.getElementById('numLabel').innerText = t.numLabel;
+        document.getElementById('noticeText').innerText = t.notice;
+        document.getElementById('submitBtn').innerText = t.btn;
+        document.getElementById('tabPairingLabel').innerText = t.tabPairing;
+        document.getElementById('tabQrLabel').innerText = t.tabQr;
+        document.getElementById('qrHeader').innerText = t.qrHeader;
+        document.getElementById('qrSubText').innerText = t.qrSub;
+        document.getElementById('qrPlaceholderText').innerText = t.qrPlaceholder;
+        document.getElementById('qrRefreshLabel').innerText = t.qrRefreshLabel;
+        document.getElementById('qrRetryLabel').innerText = t.qrRetryLabel;
+        const tipsEl = document.getElementById('pairingTipsText');
+        const waBtn = document.getElementById('openWhatsappBtn');
+        const apiBtn = document.getElementById('setApiBtn');
+        if (tipsEl) tipsEl.innerText = t.pairingTips || langTexts.en.pairingTips;
+        if (waBtn) waBtn.innerText = t.openWhatsapp || langTexts.en.openWhatsapp;
+        if (apiBtn) apiBtn.innerText = t.setApi || langTexts.en.setApi;
+        updateApiHint();
+    }
+
+    function updateApiHint() {
+        const t = langTexts[currentLang] || langTexts.en;
+        const hint = document.getElementById('apiHint');
+        const hintText = document.getElementById('apiHintText');
+        if (!hint || !hintText) return;
+
+        const runningAsFile = !isHttpOrigin();
+        const isStaticHost = isHttpOrigin() && !APP_CONFIG.apiBase;
+
+        hint.style.display = 'flex';
+
+        if (APP_CONFIG.apiBase) {
+            hint.style.background = 'rgba(109,212,154,0.07)';
+            hint.style.borderColor = 'rgba(109,212,154,0.22)';
+            hint.style.color = '#b7f4cc';
+            hintText.innerText = `${t.currentApiLabel || 'Current API'}: ${APP_CONFIG.apiBase}`;
+            return;
+        }
+
+        hint.style.background = 'rgba(232,105,122,0.08)';
+        hint.style.borderColor = 'rgba(232,105,122,0.22)';
+        hint.style.color = '#f5a0ac';
+
+        const messages = [];
+        if (runningAsFile) messages.push(getApiMissingMessage());
+        if (isStaticHost) messages.push(t.apiHint || langTexts.en.apiHint);
+        if (!runningAsFile && !isStaticHost) messages.push(t.backendRequired || langTexts.en.backendRequired);
+        const waCookieCount = getWhatsAppImportedCookies().length;
+        if (waCookieCount) messages.push(`WhatsApp cookies imported from backup: ${waCookieCount}`);
+        if (t.cookieInfo) messages.push(t.cookieInfo);
+        hintText.innerText = messages.filter(Boolean).join(' • ');
+    }
+
+    function setupBackgroundVideo() {
+        const wrapper = document.querySelector('.video-background');
+        const video = document.getElementById('bgVideo');
+        if (!wrapper || !video) return;
+        const fallback = () => wrapper.classList.add('is-fallback');
+        video.addEventListener('error', fallback, { once: true });
+        const source = video.querySelector('source');
+        if (source && !source.getAttribute('src')) fallback();
+    }
+
+    function switchTab(tab) {
+        if (tab === currentTab) return;
+        currentTab = tab;
+
+        const pill = document.getElementById('tabPill');
+        const btnPairing = document.getElementById('tabPairing');
+        const btnQr = document.getElementById('tabQr');
+        const panelPairing = document.getElementById('panelPairing');
+        const panelQr = document.getElementById('panelQr');
+
+        if (tab === 'qr') {
+            pill.classList.add('right');
+            btnPairing.classList.remove('active');
+            btnQr.classList.add('active');
+            panelPairing.classList.remove('visible');
+            panelPairing.classList.add('hidden');
+            panelQr.classList.remove('hidden');
+            panelQr.classList.add('visible');
+            setTimeout(() => loadQr(), 150);
+        } else {
+            pill.classList.remove('right');
+            btnQr.classList.remove('active');
+            btnPairing.classList.add('active');
+            panelQr.classList.remove('visible');
+            panelQr.classList.add('hidden');
+            panelPairing.classList.remove('hidden');
+            panelPairing.classList.add('visible');
+            clearInterval(qrState.countdownInt);
+        }
+    }
+
+    function setQrStatus(msg, color) {
+        const el = document.getElementById('qrStatus');
+        if (!el) return;
+        el.innerText = msg || '';
+        el.style.color = color || 'var(--muted)';
+    }
+
+    function showSkeleton(show) {
+        const skeleton = document.getElementById('qrSkeleton');
+        const placeholder = document.getElementById('qrPlaceholder');
+        if (!skeleton || !placeholder) return;
+        skeleton.classList.toggle('active', show);
+        placeholder.style.display = show ? 'none' : 'flex';
+    }
+
+    function cleanupQrObjectUrl() {
+        if (qrState.objectUrl) {
+            try { URL.revokeObjectURL(qrState.objectUrl); } catch (_) {}
+            qrState.objectUrl = '';
+        }
+    }
+
+    function revealQrImage() {
+        const img = document.getElementById('qrImage');
+        const scanLine = document.getElementById('qrScanLine');
+        const skeleton = document.getElementById('qrSkeleton');
+        const ph = document.getElementById('qrPlaceholder');
+        if (!img || !scanLine || !skeleton || !ph) return;
+        skeleton.classList.remove('active');
+        ph.style.display = 'none';
+        img.style.display = 'block';
+        requestAnimationFrame(() => {
+            img.classList.add('loaded');
+            scanLine.classList.add('active');
+        });
+    }
+
+    function resetToPlaceholder() {
+        const img = document.getElementById('qrImage');
+        const scanLine = document.getElementById('qrScanLine');
+        const skeleton = document.getElementById('qrSkeleton');
+        const ph = document.getElementById('qrPlaceholder');
+        cleanupQrObjectUrl();
+        if (img) {
+            img.classList.remove('loaded');
+            img.style.display = 'none';
+            img.removeAttribute('src');
+        }
+        if (scanLine) scanLine.classList.remove('active');
+        if (skeleton) skeleton.classList.remove('active');
+        if (ph) ph.style.display = 'flex';
+    }
+
+    function startCountdown() {
+        const progressBar = document.getElementById('qrProgressBar');
+        const countdownEl = document.getElementById('qrCountdown');
+        const progressWrap = document.getElementById('qrProgressWrap');
+        const retryBtn = document.getElementById('qrRetryBtn');
+        if (!progressBar || !countdownEl || !progressWrap || !retryBtn) return;
+
+        progressWrap.style.display = 'block';
+        retryBtn.classList.remove('visible');
+        qrState.secondsLeft = QR_INTERVAL;
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('urgent');
+        countdownEl.classList.remove('urgent');
+        countdownEl.innerText = String(QR_INTERVAL);
+
+        clearInterval(qrState.countdownInt);
+        qrState.countdownInt = setInterval(() => {
+            qrState.secondsLeft -= 1;
+            const pct = (qrState.secondsLeft / QR_INTERVAL) * 100;
+            progressBar.style.width = `${Math.max(0, pct)}%`;
+            countdownEl.innerText = String(Math.max(0, qrState.secondsLeft));
+
+            if (qrState.secondsLeft <= 5) {
+                progressBar.classList.add('urgent');
+                countdownEl.classList.add('urgent');
+            }
+
+            if (qrState.secondsLeft <= 0) {
+                clearInterval(qrState.countdownInt);
+                loadQr();
+            }
+        }, 1000);
+    }
+
+    function extractValueFromKeys(source, keys) {
+        if (!source || typeof source !== 'object') return '';
+        for (const key of keys) {
+            const value = source[key];
+            if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return '';
+    }
+
+    function extractPairingCode(payload) {
+        if (!payload) return '';
+        if (typeof payload === 'string') return payload.trim();
+        const direct = extractValueFromKeys(payload, ['code', 'pairingCode', 'pairing_code', 'pairCode', 'pairing', 'pin', 'codeText', 'token']);
+        if (direct) return direct;
+        for (const key of ['data', 'result', 'payload']) {
+            if (payload[key]) {
+                const nested = extractPairingCode(payload[key]);
+                if (nested) return nested;
+            }
+        }
+        return '';
+    }
+
+    function extractQrSource(payload) {
+        if (!payload) return '';
+        if (typeof payload === 'string') return payload.trim();
+        const direct = extractValueFromKeys(payload, ['qr', 'qrCode', 'qr_code', 'image', 'imageUrl', 'qrImage', 'src', 'url', 'dataUrl', 'svg']);
+        if (direct) return direct;
+        for (const key of ['data', 'result', 'payload']) {
+            if (payload[key]) {
+                const nested = extractQrSource(payload[key]);
+                if (nested) return nested;
+            }
+        }
+        return '';
+    }
+
+    function looksLikeQrImageSource(value) {
+        return /^(data:image\/|https?:\/\/|blob:|\/)/i.test(String(value || '').trim());
+    }
+
+    async function fetchWithTimeout(url, options = {}) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal, cache: 'no-store' });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    async function loadQr() {
+        if (qrState.loading) return;
+        qrState.loading = true;
+
+        const t = langTexts[currentLang] || langTexts.en;
+        const retryBtn = document.getElementById('qrRetryBtn');
+        const img = document.getElementById('qrImage');
+        const progressWrap = document.getElementById('qrProgressWrap');
+        if (!img || !retryBtn || !progressWrap) {
+            qrState.loading = false;
+            return;
+        }
+
+        clearInterval(qrState.countdownInt);
+        retryBtn.classList.remove('visible');
+        progressWrap.style.display = 'none';
+        resetToPlaceholder();
+        showSkeleton(true);
+        setQrStatus(t.qrLoading);
+
+        let resolvedUrl = '';
+        let resolvedFromBlob = false;
+
+        try {
+            const resolved = await fetchQrFromCandidates(t);
+            resolvedUrl = resolved.src;
+            resolvedFromBlob = Boolean(resolved.fromBlob);
+
+            if (!buildQrImageSource(resolvedUrl)) {
+                throw new Error(t.qrFailed);
+            }
+
+            img.onload = () => {
+                qrState.loading = false;
+                qrState.everLoaded = true;
+                qrState.retryCount = 0;
+                revealQrImage();
+                setQrStatus(t.qrLoaded, 'rgba(109,212,154,0.85)');
+                startCountdown();
+            };
+
+            img.onerror = () => {
+                qrState.loading = false;
+                qrState.retryCount += 1;
+                if (resolvedFromBlob) cleanupQrObjectUrl();
+                resetToPlaceholder();
+                progressWrap.style.display = 'none';
+                setQrStatus(qrState.retryCount >= QR_MAX_RETRY ? t.qrMaxRetry : t.qrFailed, 'var(--rose)');
+                retryBtn.classList.add('visible');
+            };
+
+            img.src = buildQrImageSource(resolvedUrl);
+        } catch (error) {
+            qrState.loading = false;
+            if (resolvedFromBlob) cleanupQrObjectUrl();
+            showSkeleton(false);
+            resetToPlaceholder();
+            setQrStatus(getFriendlyErrorMessage(error, t), 'var(--rose)');
+            retryBtn.classList.add('visible');
+        }
+    }
+
+    function retryQr() {
+        qrState.retryCount = 0;
+        qrState.loading = false;
+        loadQr();
+    }
+
+    async function post(endpoint, payload) {
+        const url = resolveEndpoint(endpoint);
+        const res = await fetchWithTimeout(url, {
+            method: 'POST',
+            headers: buildRequestHeaders({
+                'Content-Type': 'application/json',
+                Accept: 'application/json, text/plain, */*'
+            }),
+            body: JSON.stringify(payload),
+            credentials: APP_CONFIG.apiBase ? 'omit' : 'same-origin'
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        const body = contentType.includes('application/json')
+            ? await res.json().catch(() => ({}))
+            : { error: await res.text().catch(() => '') };
+
+        if (!res.ok) throw new Error(body.error || body.message || `HTTP ${res.status}`);
+        return body;
+    }
+
+    async function get(endpoint, params) {
+        const url = new URL(resolveEndpoint(endpoint));
+        Object.entries(params || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && `${value}`.trim() !== '') {
+                url.searchParams.set(key, `${value}`);
+            }
+        });
+
+        const res = await fetchWithTimeout(url.toString(), {
+            method: 'GET',
+            headers: buildRequestHeaders({ Accept: 'application/json, text/plain, */*' }),
+            credentials: APP_CONFIG.apiBase ? 'omit' : 'same-origin'
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        const body = contentType.includes('application/json')
+            ? await res.json().catch(() => ({}))
+            : { error: await res.text().catch(() => '') };
+
+        if (!res.ok) throw new Error(body.error || body.message || `HTTP ${res.status}`);
+        return body;
+    }
+
+    async function requestPairingCode(phone) {
+        const payload = {
+            num: phone,
+            phone,
+            number: phone,
+            phoneNumber: phone,
+            msisdn: phone,
+            waNumber: phone,
+            whatsappNumber: phone
+        };
+
+        return await tryPairingCandidates(payload);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyImportedCookiesForCurrentHost();
+        setupBackgroundVideo();
+        updateApiHint();
+
+        const phoneInputEl = document.getElementById('phoneNum');
+        const waBtn = document.getElementById('openWhatsappBtn');
+
+        const syncWhatsappButton = () => {
+            if (waBtn) waBtn.href = getWhatsAppLaunchUrl(phoneInputEl ? phoneInputEl.value : '');
+        };
+
+        if (phoneInputEl) {
+            phoneInputEl.addEventListener('blur', () => {
+                phoneInputEl.value = normalizePhoneNumber(phoneInputEl.value);
+                syncWhatsappButton();
+            });
+            phoneInputEl.addEventListener('input', syncWhatsappButton);
+            phoneInputEl.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') handleSubmit();
+            });
+        }
+
+        syncWhatsappButton();
+        const importedLang = getImportedCookieValue(['wa_lang_pref'], 'whatsapp.com');
+        const savedLang = localStorage.getItem('GQ_LANG') || importedLang;
+        if (savedLang && langTexts[savedLang]) initPage(savedLang);
+    });
+
+    async function handleSubmit() {
+        const t = langTexts[currentLang] || langTexts.en;
+        const submitBtnEl = document.getElementById('submitBtn');
+        const phoneField = document.getElementById('phoneNum');
+        const phoneInput = phoneField ? phoneField.value : '';
+        const phone = normalizePhoneNumber(phoneInput);
+
+        if (phoneField) phoneField.value = phone;
+        if (!phone) return Swal.fire('Error', t.fillAll, 'warning');
+
+        if (phone.startsWith('0') || phone.length < 10 || phone.length > 15) {
+            return Swal.fire('Error', `${t.invalidNum}<br><br>Use full international format, example: 201234567890`, 'error');
+        }
+
+        submitBtnEl.disabled = true;
+        submitBtnEl.style.opacity = '0.7';
+
+        Swal.fire({
+            title: t.loading,
+            text: t.wait,
+            allowOutsideClick: false,
+            background: 'var(--card)',
+            color: 'var(--text)',
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const result = await requestPairingCode(phone);
+            const pairingCode = extractPairingCode(result);
+            const isSuccess = Boolean(result && (result.success || result.status === 'success' || pairingCode));
+
+            if (!isSuccess || !pairingCode) {
+                throw new Error((result && (result.error || result.message)) || t.failMsg);
+            }
+
+            const copied = await navigator.clipboard.writeText(pairingCode).then(() => true).catch(() => false);
+            const modalResult = await Swal.fire({
+                title: t.successTitle,
+                html: `<div style="padding:10px 0;line-height:1.8;">
+                        <p style="color:var(--muted);margin-bottom:6px;">${t.successBody}</p>
+                        <b style="color:var(--gold-light);font-family:'Playfair Display',serif;font-size:2.4rem;letter-spacing:6px;display:block;margin:18px 0;text-shadow:0 0 20px rgba(212,160,85,0.4);">${pairingCode}</b>
+                        <p style="font-size:0.9rem;color:#d8d1e2;">${t.successSteps || langTexts.en.successSteps}</p>
+                        <p style="font-size:0.83rem;color:#6dd49a;margin-top:10px;">${copied ? t.copyMsg : pairingCode}</p>
+                        <p style="font-size:0.78rem;color:var(--muted);margin-top:10px;">Official WhatsApp: api.whatsapp.com</p>
+                    </div>`,
+                icon: 'success',
+                showDenyButton: true,
+                denyButtonText: t.openWhatsapp || 'Open WhatsApp',
+                confirmButtonText: t.done || 'Done',
+                background: 'var(--card)',
+                color: 'var(--text)'
+            });
+
+            if (modalResult.isDenied) {
+                window.open(getWhatsAppLaunchUrl(phone), '_blank', 'noopener,noreferrer');
+            }
+        } catch (err) {
+            const details = [];
+            details.push(getFriendlyErrorMessage(err, t));
+            if (!APP_CONFIG.apiBase && !isHttpOrigin()) details.push(getApiMissingMessage());
+            if (!APP_CONFIG.apiBase) details.push(t.backendRequired || langTexts.en.backendRequired);
+            Swal.fire('Failed', details.filter(Boolean).join('<br><br>'), 'error');
+        } finally {
+            submitBtnEl.disabled = false;
+            submitBtnEl.style.opacity = '';
+        }
+    }
+
+    window.initPage = initPage;
+    window.switchTab = switchTab;
+    window.loadQr = loadQr;
+    window.retryQr = retryQr;
+    window.handleSubmit = handleSubmit;
+    window.promptApiBase = promptApiBase;
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
+
