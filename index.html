@@ -23,16 +23,18 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            text-align: center;
         }
         .container {
             background: var(--card);
             padding: 30px;
             border-radius: 20px;
             border: 1px solid var(--gold);
-            text-align: center;
             width: 90%;
             max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
+        h2 { color: var(--gold); margin-bottom: 10px; }
         input {
             width: 100%;
             padding: 15px;
@@ -41,8 +43,9 @@
             border: 1px solid #444;
             background: #222;
             color: white;
-            font-size: 1rem;
+            font-size: 1.1rem;
             text-align: center;
+            box-sizing: border-box;
         }
         button {
             width: 100%;
@@ -54,55 +57,71 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 1rem;
+            transition: 0.3s;
         }
+        button:hover { background: #b38644; }
         #result {
-            margin-top: 20px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--gold);
+            margin-top: 25px;
+            min-height: 50px;
+        }
+        .pairing-code {
+            font-family: monospace;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            color: #fff;
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 10px;
+            border: 1px dashed var(--gold);
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>👑 فارس بوت</h2>
-        <p>أدخل رقمك مع رمز الدولة للحصول على كود الاقتران</p>
+        <h2>👑 سيرفر فارس</h2>
+        <p>احصل على كود ربط الواتساب الخاص بك</p>
         
-        <input type="text" id="phoneNumber" placeholder="مثال: 967777777777">
-        <button onclick="getPairingCode()">الحصول على الكود</button>
+        <input type="text" id="phoneNumber" placeholder="967777777777">
+        <button onclick="getPairingCode()">إنشاء كود الاقتران</button>
         
         <div id="result"></div>
     </div>
 
     <script>
         async function getPairingCode() {
-            const number = document.getElementById('phoneNumber').value;
+            const number = document.getElementById('phoneNumber').value.trim();
             const resultDiv = document.getElementById('result');
             
             if (!number) {
-                Swal.fire('خطأ', 'يرجى إدخال رقم الهاتف', 'error');
+                Swal.fire('تنبيه', 'يرجى كتابة رقم الهاتف أولاً', 'warning');
                 return;
             }
 
-            resultDiv.innerHTML = "جاري التحميل...";
+            resultDiv.innerHTML = "<p style='color: #aaa;'>جاري الاتصال بالسيرفر وطلب الكود...</p>";
 
             try {
-                // تم تعديل الرابط هنا ليوجه لسريرفرك الخاص في Render
+                // هذا هو الرابط الصحيح الذي سيتصل بسيرفرك في Render
                 const response = await fetch(`https://fares-bot-eahg.onrender.com/api/pairing?number=${number}`);
                 const data = await response.json();
 
-                if (data.status) {
-                    resultDiv.innerHTML = `كودك هو: <br> <span style="color:white; background:#444; padding:5px 15px; border-radius:5px;">${data.pairing_code}</span>`;
-                    Swal.fire('نجاح', 'تم توليد الكود بنجاح', 'success');
+                if (data.status && data.pairing_code) {
+                    resultDiv.innerHTML = `
+                        <p style="color: var(--gold);">تم توليد الكود بنجاح:</p>
+                        <div class="pairing-code">${data.pairing_code}</div>
+                        <p style="font-size: 0.8rem; margin-top: 10px;">قم بنسخ الكود وضعه في واتساب (ربط جهاز)</p>
+                    `;
+                    Swal.fire('نجاح', 'تم استلام الكود من السيرفر', 'success');
                 } else {
-                    resultDiv.innerHTML = "فشل توليد الكود";
-                    Swal.fire('تنبيه', data.message || 'حدث خطأ ما', 'warning');
+                    resultDiv.innerHTML = "<p style='color: #ff4444;'>فشل في الحصول على الكود</p>";
+                    Swal.fire('خطأ', data.message || 'السيرفر لم يستجب بشكل صحيح', 'error');
                 }
             } catch (error) {
-                console.error(error);
-                resultDiv.innerHTML = "خطأ في الاتصال بالسيرفر";
-                Swal.fire('خطأ', 'تأكد من أن السيرفر يعمل في Render', 'error');
+                console.error("Error:", error);
+                resultDiv.innerHTML = "<p style='color: #ff4444;'>خطأ في الاتصال بالسيرفر</p>";
+                Swal.fire('خطأ في الاتصال', 'تأكد أن السيرفر في Render بوضع Live وأن الرابط صحيح', 'error');
             }
         }
     </script>
