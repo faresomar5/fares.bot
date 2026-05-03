@@ -1,7 +1,7 @@
 {
   "name": "fares-bot",
   "version": "1.0.0",
-  "description": "WhatsApp Pairing API Fixed",
+  "description": "WhatsApp Pairing API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
