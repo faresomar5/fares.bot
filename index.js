@@ -12,6 +12,15 @@ app.get('/api/pairing', async (req, res) => {
     if (!phone) return res.json({ error: "يرجى إدخال رقم الهاتف" });
 
     try {
+                const socket = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            logger: pino({ level: "silent" }),
+            // تعديل الهوية لإصدار ويندوز رسمي وحديث
+            browser: ["Chrome (Windows)", "10.0.22621", "120.0.0.0"],
+            version: [2, 3000, 1015901307] // فرض إصدار واتساب ويب حديث
+        });
+
         const { state, saveCreds } = await useMultiFileAuthState('session');
         const socket = makeWASocket({
             auth: state,
