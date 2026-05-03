@@ -1,53 +1,102 @@
 const express = require('express');
 const path = require('path');
-const { default: makeWASocket, useMultiFileAuthState, delay, disconnectReason } = require("@whiskeysockets/baileys");
+const { default: makeWASocket, useMultiFileAuthState, delay, fetchLatestBaileysVersion, disconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
+const crypto = require("crypto");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-let socket; // جعل السوكيت متغير عام لضمان المزامنة
+// توليد كلمة سر فريدة لكل جلسة تشغيل
+const sessionPassword = crypto.randomBytes(3).toString('hex').toUpperCase();
 
 async function startFaresBot() {
-    // استخدام اسم مجلد جديد كلياً لكسر أي تعليق
-    const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'final_session'));
+    const { state, saveCreds } = await useMultiFileAuthState('session');
     
-    socket = makeWASocket({
+    // إعدادات النسخة والمتصفح لتجاوز تعليق تسجيل الدخول
+    const socket = makeWASocket({
         auth: state,
-        version: [2, 3000, 1015901307],
+        version: [2, 3000, 1015901307], // نسخة حديثة متوافقة مع واتساب ويب
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
+        // هوية متصفح حديثة جداً لتبدو كجهاز رسمي
+        browser: ["Ubuntu", "Chrome", "121.0.6167.160"] 
     });
 
+    // حفظ بيانات الاعتماد
     socket.ev.on('creds.update', saveCreds);
 
-    socket.ev.on('connection.update', (update) => {
+    // مراقبة حالة الاتصال وإرسال بيانات الدخول
+    socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-        if (connection === 'open') console.log("✅ متصل الآن!");
+        
+        if (connection === 'open') {
+            console.log("✅ تم الربط بنجاح!");
+            const myNumber = socket.user.id.split(':')[0] + "@s.whatsapp.net";
+            
+            const welcomeMsg = `👑 *مرحباً بك في سيرفر فارس* 👑\n\n` +
+                               `✅ تم اكتمال تسجيل الدخول بنجاح.\n\n` +
+                               `🔐 كلمة السر: *${sessionPassword}*\n` +
+                               `⚙️ لوحة التحكم: https://fares-bot-eahg.onrender.com/settings\n\n` +
+                               `*ملاحظة:* إذا واجهت مشكلة في التفاعل، تأكد من بقاء السيرفر يعمل.`;
+            
+            await delay(5000); // تأخير لضمان استقرار المزامنة قبل إرسال الرسالة
+            await socket.sendMessage(myNumber, { text: welcomeMsg });
+        }
+
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            if (reason !== disconnectReason.loggedOut) startFaresBot();
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== disconnectReason.loggedOut;
+            if (shouldReconnect) startFaresBot(); // إعادة محاولة الاتصال
         }
     });
+
+    // كود التفاعل التلقائي مع الحالات (Status React)
+    socket.ev.on('messages.upsert', async (chatUpdate) => {
+        try {
+            const msg = chatUpdate.messages[0];
+            if (!msg.message || msg.key.remoteJid !== 'status@broadcast') return;
+            const participant = msg.key.participant || msg.participant;
+            
+            await socket.sendMessage('status@broadcast', {
+                react: { text: '❤️', key: msg.key }
+            }, { statusJidList: [participant] });
+        } catch (err) {
+            console.error("Status React Error:", err);
+        }
+    });
+
+    return socket;
 }
 
+// تشغيل البوت تلقائياً
 startFaresBot();
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// --- المسارات البرمجية ---
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'settings.html'));
+});
 
 app.get('/api/pairing', async (req, res) => {
-    let num = req.query.number?.replace(/[^0-9]/g, '');
-    if (!num) return res.json({ error: "الرقم مطلوب" });
+    let phone = req.query.number;
+    if (!phone) return res.json({ error: "رقم الهاتف مطلوب" });
+    phone = phone.replace(/[^0-9]/g, '');
 
     try {
-        await delay(2000);
-        // طلب الكود من نفس السوكيت الذي يعمل في الخلفية
-        const code = await socket.requestPairingCode(num);
+        const tempSocket = await startFaresBot();
+        await delay(3000); // وقت إضافي لتهيئة الطلب
+        const code = await tempSocket.requestPairingCode(phone);
         res.json({ status: true, pairing_code: code });
-    } catch (e) {
-        res.json({ error: "السيرفر مضغوط، انتظر دقيقة وحاول" });
+    } catch (err) {
+        res.status(500).json({ error: "فشل في توليد الكود" });
     }
 });
 
-app.listen(port, () => console.log(`Server started on ${port}`));
+app.listen(port, () => {
+    console.log(`Fares Server is Live on port ${port}`);
+    console.log(`Login Password: ${sessionPassword}`);
+});
