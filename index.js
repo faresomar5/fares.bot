@@ -2,51 +2,61 @@ const express = require('express');
 const path = require('path');
 const { default: makeWASocket, useMultiFileAuthState, delay, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 const pino = require("pino");
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 1. نظام توليد كود الاقتران (API)
+// التأكد من وجود مجلد للجلسات
+const sessionsDir = path.join(__dirname, 'sessions');
+if (!fs.existsSync(sessionsDir)) {
+    fs.mkdirSync(sessionsDir);
+}
+
+// 1. نظام توليد كود الاقتران (API) العام
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
     if (!phone) return res.json({ error: "يرجى إدخال رقم الهاتف" });
 
-    // تنظيف الرقم من المسافات أو الرموز
     phone = phone.replace(/[^0-9]/g, '');
 
+    // الحل: إنشاء مسار جلسة فريد لكل رقم هاتف لضمان عدم التداخل
+    const sessionPath = path.join(sessionsDir, `session_${phone}`);
+
     try {
-        // تعريف الحالة لمرة واحدة فقط
-        const { state, saveCreds } = await useMultiFileAuthState('session');
+        // تعريف حالة مستقلة لكل مستخدم بناءً على رقمه
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
         const { version } = await fetchLatestBaileysVersion();
 
-        // تعريف الـ socket لمرة واحدة مع أفضل الإعدادات لوصول الكود
         const socket = makeWASocket({
             auth: state,
             version: version,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            // استخدام هوية متصفح موثوقة
-            browser: ["Mac OS", "Chrome", "10.15.7"]
+            // استخدام هوية متصفح حديثة لضمان استقرار الاتصال
+            browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
         });
 
-        if (!socket.authState.creds.registered) {
-            await delay(2000); // تأخير بسيط لاستقرار الاتصال
-            const code = await socket.requestPairingCode(phone);
-            
-            if (!res.headersSent) {
-                res.json({ 
-                    status: true, 
-                    pairing_code: code 
-                });
+        // مراقبة حالة الاتصال لضمان تسجيل الدخول بنجاح
+        socket.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect } = update;
+            if (connection === 'open') {
+                console.log(`✅ تم تسجيل دخول الرقم: ${phone} بنجاح`);
             }
-        } else {
-            if (!res.headersSent) {
-                res.json({ status: false, message: "الرقم مربوط مسبقاً" });
-            }
-        }
+        });
 
-        // حفظ التحديثات
         socket.ev.on('creds.update', saveCreds);
+
+        // طلب الكود مباشرة (بدون شرط التفتيش القديم الذي كان يسبب "مربوط مسبقاً")
+        await delay(3000); 
+        const code = await socket.requestPairingCode(phone);
+        
+        if (!res.headersSent) {
+            res.json({ 
+                status: true, 
+                pairing_code: code 
+            });
+        }
 
     } catch (err) {
         console.error("Error in Pairing:", err);
@@ -56,12 +66,12 @@ app.get('/api/pairing', async (req, res) => {
     }
 });
 
-// 2. فتح واجهة الموقع (index.html)
+// 2. واجهة الموقع
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // 3. تشغيل السيرفر
 app.listen(port, () => {
-    console.log(`السيرفر يعمل الآن بنجاح على المنفذ ${port}`);
+    console.log(`السيرفر العام يعمل الآن بنجاح على المنفذ ${port}`);
 });
