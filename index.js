@@ -3,25 +3,26 @@ const path = require('path');
 const { default: makeWASocket, useMultiFileAuthState, delay, fetchLatestBaileysVersion, disconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const fs = require('fs-extra');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// مجلد الجلسات الرئيسي
-const SESSIONS_DIR = path.join(__dirname, 'temp_sessions');
+// مجلد لتخزين الجلسات المؤقتة
+const SESSION_ROOT = path.join(__dirname, 'sessions');
 
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
-    if (!phone) return res.json({ error: "أدخل الرقم أولاً" });
+    if (!phone) return res.json({ error: "أدخل رقم الهاتف أولاً" });
     phone = phone.replace(/[^0-9]/g, '');
 
-    // توليد معرف فريد جداً لكل طلب (هذا هو سر السرعة)
-    const requestId = `session_${phone}_${Math.random().toString(36).substring(7)}`;
-    const sessionPath = path.join(SESSIONS_DIR, requestId);
+    // إنشاء معرف فريد لكل طلب لضمان استقلالية الجلسة وعدم التعليق
+    const sessionId = `${phone}_${uuidv4()}`;
+    const sessionDir = path.join(SESSION_ROOT, sessionId);
 
     try {
-        await fs.ensureDir(sessionPath);
-        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        await fs.ensureDir(sessionDir);
+        const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
         const { version } = await fetchLatestBaileysVersion();
 
         const socket = makeWASocket({
@@ -29,61 +30,66 @@ app.get('/api/pairing', async (req, res) => {
             version: version,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            // هوية متصفح عالمية تضمن الربط مع كافة النسخ (الرسمي والمعدل)
-            browser: ["Mac OS", "Chrome", "110.0.5481.177"] 
+            // هوية متصفح Mac OS Chrome - وهي الأكثر استقراراً للربط الفوري
+            browser: ["Mac OS", "Chrome", "110.0.5481.177"]
         });
 
-        // مراقبة حالة الاتصال - لحل مشكلة "تعذر الربط"
+        // إدارة أحداث الاتصال لإتمام الربط فوراً
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
             
             if (connection === 'open') {
-                console.log(`✅ تم الربط بنجاح: ${phone}`);
-                // إرسال رسالة ترحيبية فورية للمستخدم لإعلامه بالنجاح
-                await socket.sendMessage(socket.user.id, { text: "🎉 تم ربط حسابك بنجاح في منصة فارس!" });
+                console.log(`✅ Success for ${phone}`);
+                // إرسال رسالة نجاح للمستخدم فوراً
+                await socket.sendMessage(socket.user.id, { text: "✅ تم ربط جهازك بنجاح في نظام فارس!" });
                 
-                // تنظيف الجلسة من السيرفر بعد الربط بـ 10 ثوانٍ لتوفير المساحة
+                // تنظيف السيرفر: حذف ملفات الجلسة بعد النجاح بـ 20 ثانية لتوفير المساحة
                 setTimeout(async () => {
                     socket.logout();
-                    await fs.remove(sessionPath);
-                }, 10000);
+                    await fs.remove(sessionDir);
+                }, 20000);
             }
 
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
-                if (reason !== disconnectReason.connectionReplaced) {
-                    await fs.remove(sessionPath);
+                if (reason === disconnectReason.loggedOut) {
+                    await fs.remove(sessionDir);
                 }
             }
         });
 
         socket.ev.on('creds.update', saveCreds);
 
-        // طلب كود الربط
-        await delay(2500); 
+        // طلب كود الاقتران
+        await delay(2000); 
         const code = await socket.requestPairingCode(phone);
         
         if (!res.headersSent) {
-            res.json({ status: true, pairing_code: code });
+            res.json({ 
+                status: true, 
+                pairing_code: code 
+            });
         }
 
-        // إغلاق الجلسة إذا لم يتم الربط خلال دقيقتين
+        // إغلاق الجلسة وتنظيفها إذا لم يتم الربط خلال دقيقتين
         setTimeout(async () => {
             if (!socket.user) {
                 socket.end();
-                await fs.remove(sessionPath);
+                await fs.remove(sessionDir);
             }
         }, 120000);
 
     } catch (err) {
         console.error(err);
-        await fs.remove(sessionPath);
-        if (!res.headersSent) res.status(500).json({ error: "فشل، حاول مرة أخرى" });
+        await fs.remove(sessionDir);
+        if (!res.headersSent) res.status(500).json({ error: "تعذر بدء الجلسة" });
     }
 });
 
-app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.listen(port, () => {
-    console.log(`سيرفر فارس العام يعمل بنجاح على المنفذ ${port}`);
+    console.log(`Professional Pairing API is live on port ${port}`);
 });
