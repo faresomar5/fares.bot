@@ -8,14 +8,16 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const port = process.env.PORT || 3000;
 
-const SESSION_ROOT = path.join(__dirname, 'sessions');
+// مجلد الجلسات المتطايرة (مثل المنصات الكبيرة)
+const SESSION_ROOT = path.join(__dirname, 'temp_sessions');
 
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
-    if (!phone) return res.json({ error: "أدخل الرقم أولاً" });
+    if (!phone) return res.json({ error: "يرجى إضافة الرقم بعد رابط الـ API" });
     phone = phone.replace(/[^0-9]/g, '');
 
-    const sessionId = `global_session_${phone}_${uuidv4()}`;
+    // توليد معرف فريد لكل طلب لضمان عدم تعليق "جاري تسجيل الدخول"
+    const sessionId = `fares_${phone}_${uuidv4()}`;
     const sessionDir = path.join(SESSION_ROOT, sessionId);
 
     try {
@@ -28,27 +30,25 @@ app.get('/api/pairing', async (req, res) => {
             version: version,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            // السر هنا: استخدام هوية متصفح "كروم" عامة جداً لا ترتبط بنظام تشغيل محدد بدقة
-            // هذا يساعد في تخطي فحص "الموقع الجغرافي" المشدد
-            browser: ["Chrome (Public)", "Desktop", "120.0.0.0"] 
+            // هوية متصفح عالمية لتخطي حظر السيرفرات
+            browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
         });
 
         socket.ev.on('creds.update', saveCreds);
 
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
-            
             if (connection === 'open') {
-                console.log(`✅ تم الربط بنجاح من جهاز دولي: ${phone}`);
-                // إرسال رسالة لتثبيت الجلسة فوراً
-                await socket.sendMessage(socket.user.id, { text: "تم تفعيل نظام فارس العالمي بنجاح ✅" });
+                console.log(`✅ تم الربط بنجاح للرقم: ${phone}`);
+                // إرسال رسالة نجاح للمستخدم
+                await socket.sendMessage(socket.user.id, { text: "✅ تم ربط البوت بنجاح!" });
                 
+                // مسح الجلسة بعد النجاح بـ 15 ثانية لتوفير المساحة
                 setTimeout(async () => {
                     socket.end();
                     await fs.remove(sessionDir);
-                }, 20000);
+                }, 15000);
             }
-
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
                 if (reason !== disconnectReason.connectionReplaced) {
@@ -57,17 +57,20 @@ app.get('/api/pairing', async (req, res) => {
             }
         });
 
-        // تأخير بسيط جداً لتقليل "الشك" من خوارزميات واتساب
+        // طلب كود الاقتران من واتساب (هذا هو جوهر الـ API)
         await delay(2000); 
         const code = await socket.requestPairingCode(phone);
         
+        // إرسال النتيجة بنفس تنسيق المواقع الكبيرة
         if (!res.headersSent) {
             res.json({ 
                 status: true, 
+                author: "Fares Al-Tamimi",
                 pairing_code: code 
             });
         }
 
+        // إغلاق الطلب تلقائياً بعد دقيقتين إذا لم يربط المستخدم
         setTimeout(async () => {
             if (!socket.user) {
                 socket.end();
@@ -77,10 +80,15 @@ app.get('/api/pairing', async (req, res) => {
 
     } catch (err) {
         await fs.remove(sessionDir);
-        if (!res.headersSent) res.status(500).json({ error: "فشل في السيرفر الدولي" });
+        if (!res.headersSent) res.status(500).json({ error: "فشل في إنشاء الكود" });
     }
 });
 
-app.get('/', (req, res) => { res.send("Fares Global API is active"); });
+// صفحة ترحيب بسيطة
+app.get('/', (req, res) => {
+    res.send("Fares-Bot API is Running! Use /api/pairing?number=YOUR_NUMBER");
+});
 
-app.listen(port, () => { console.log(`Global Server live on ${port}`); });
+app.listen(port, () => {
+    console.log(`API is live on port ${port}`);
+});
