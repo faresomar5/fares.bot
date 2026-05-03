@@ -9,14 +9,16 @@ const port = process.env.PORT || 3000;
 const sessionPassword = crypto.randomBytes(3).toString('hex').toUpperCase();
 
 async function startFaresBot() {
-    // استخدمنا اسم مجلد جديد تماماً لضمان النظافة
     const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'fares_auth'));
     
     const socket = makeWASocket({
         auth: state,
-        printQRInTerminal: true, // سيظهر الكود في سجلات Render أيضاً
-        logger: pino({ level: "error" }), // تقليل السجلات لزيادة الاستقرار
-        browser: ["Windows", "Chrome", "110.0.0.0"]
+        // إجبار السيرفر على استخدام أحدث إصدار ويب لإقناع واتساب بأنه متصفح حقيقي
+        version: [2, 3000, 1015901307], 
+        printQRInTerminal: false,
+        logger: pino({ level: "silent" }),
+        // هوية متصفح MacOS مع Chrome 124 (موثوقة جداً ولا تُحجب غالباً)
+        browser: ["Mac OS", "Chrome", "124.0.6367.60"] 
     });
 
     socket.ev.on('creds.update', saveCreds);
@@ -42,15 +44,25 @@ startFaresBot();
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/settings', (req, res) => res.sendFile(path.join(__dirname, 'settings.html')));
+
 app.get('/api/pairing', async (req, res) => {
     let num = req.query.number?.replace(/[^0-9]/g, '');
+    if (!num) return res.json({ error: "رقم مطلوب" });
+
     try {
         const { state } = await useMultiFileAuthState(path.join(__dirname, 'fares_auth'));
-        const temp = makeWASocket({ auth: state, logger: pino({ level: "error" }), browser: ["Windows", "Chrome", "110.0.0.0"] });
-        await delay(3000);
+        const temp = makeWASocket({ 
+            auth: state, 
+            version: [2, 3000, 1015901307],
+            logger: pino({ level: "silent" }), 
+            browser: ["Mac OS", "Chrome", "124.0.6367.60"] 
+        });
+        await delay(3500); // زيادة وقت التهيئة قليلاً
         const code = await temp.requestPairingCode(num);
         res.json({ status: true, pairing_code: code });
-    } catch (e) { res.json({ error: "خطأ في الاتصال" }); }
+    } catch (e) { 
+        res.json({ error: "حاول مرة أخرى بعد دقيقة" }); 
+    }
 });
 
-app.listen(port, () => console.log(`Server Online: ${port}`));
+app.listen(port, () => console.log(`Server Online`));
