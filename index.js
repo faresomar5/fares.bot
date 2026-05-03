@@ -2,28 +2,26 @@ const express = require('express');
 const path = require('path');
 const { default: makeWASocket, useMultiFileAuthState, delay, fetchLatestBaileysVersion, disconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
-const fs = require('fs-extra'); // المكتبة الجديدة للتحكم في الجلسات
+const fs = require('fs-extra');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// مجلد تخزين الجلسات الاحترافي
-const SESSION_PATH = path.join(__dirname, 'sessions');
+// مجلد الجلسات الرئيسي
+const SESSIONS_DIR = path.join(__dirname, 'temp_sessions');
 
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
-    if (!phone) return res.json({ error: "يرجى إدخال الرقم" });
+    if (!phone) return res.json({ error: "أدخل الرقم أولاً" });
     phone = phone.replace(/[^0-9]/g, '');
 
-    // توليد معرف فريد لكل طلب (ID) لمنع تصادم البيانات
-    const requestId = `session_${phone}_${Date.now()}`;
-    const specificSessionPath = path.join(SESSION_PATH, requestId);
+    // توليد معرف فريد جداً لكل طلب (هذا هو سر السرعة)
+    const requestId = `session_${phone}_${Math.random().toString(36).substring(7)}`;
+    const sessionPath = path.join(SESSIONS_DIR, requestId);
 
     try {
-        // التأكد من نظافة المجلد قبل البدء لضمان السرعة
-        await fs.ensureDir(specificSessionPath);
-
-        const { state, saveCreds } = await useMultiFileAuthState(specificSessionPath);
+        await fs.ensureDir(sessionPath);
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
         const { version } = await fetchLatestBaileysVersion();
 
         const socket = makeWASocket({
@@ -31,53 +29,61 @@ app.get('/api/pairing', async (req, res) => {
             version: version,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            // محاكاة متصفح Safari على Mac لضمان قبول الربط في الواتساب المعدل
-            browser: ["Mac OS", "Safari", "15.0"]
+            // هوية متصفح عالمية تضمن الربط مع كافة النسخ (الرسمي والمعدل)
+            browser: ["Mac OS", "Chrome", "110.0.5481.177"] 
         });
 
-        // مراقبة الاتصال: حل مشكلة "تعذر الربط"
+        // مراقبة حالة الاتصال - لحل مشكلة "تعذر الربط"
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
+            
             if (connection === 'open') {
-                console.log(`✅ Success: ${phone} Connected`);
+                console.log(`✅ تم الربط بنجاح: ${phone}`);
+                // إرسال رسالة ترحيبية فورية للمستخدم لإعلامه بالنجاح
+                await socket.sendMessage(socket.user.id, { text: "🎉 تم ربط حسابك بنجاح في منصة فارس!" });
+                
+                // تنظيف الجلسة من السيرفر بعد الربط بـ 10 ثوانٍ لتوفير المساحة
+                setTimeout(async () => {
+                    socket.logout();
+                    await fs.remove(sessionPath);
+                }, 10000);
             }
+
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
                 if (reason !== disconnectReason.connectionReplaced) {
-                    await fs.remove(specificSessionPath); // تنظيف الجلسة الفاشلة فوراً
+                    await fs.remove(sessionPath);
                 }
             }
         });
 
         socket.ev.on('creds.update', saveCreds);
 
-        // طلب الكود بعد استقرار السوكيت
-        await delay(3000); 
+        // طلب كود الربط
+        await delay(2500); 
         const code = await socket.requestPairingCode(phone);
         
         if (!res.headersSent) {
             res.json({ status: true, pairing_code: code });
         }
 
-        // إغلاق تلقائي للجلسات المعلقة بعد دقيقتين لتوفير موارد السيرفر
+        // إغلاق الجلسة إذا لم يتم الربط خلال دقيقتين
         setTimeout(async () => {
             if (!socket.user) {
                 socket.end();
-                await fs.remove(specificSessionPath);
+                await fs.remove(sessionPath);
             }
         }, 120000);
 
     } catch (err) {
         console.error(err);
-        await fs.remove(specificSessionPath);
-        if (!res.headersSent) res.status(500).json({ error: "خطأ في الاتصال" });
+        await fs.remove(sessionPath);
+        if (!res.headersSent) res.status(500).json({ error: "فشل، حاول مرة أخرى" });
     }
 });
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
 
 app.listen(port, () => {
-    console.log(`سيرفر فارس يعمل الآن بأعلى كفاءة على المنفذ ${port}`);
+    console.log(`سيرفر فارس العام يعمل بنجاح على المنفذ ${port}`);
 });
