@@ -7,25 +7,26 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// مجلد لتخزين الجلسات المنفصلة لضمان السرعة ومنع التعليق
+// مجلد الجلسات العام
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
-if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR);
+if (!fs.existsSync(SESSIONS_DIR)) {
+    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+}
 
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
     if (!phone) return res.json({ error: "يرجى إدخال رقم الهاتف" });
-
     phone = phone.replace(/[^0-9]/g, '');
 
-    // الحل الجذري: إنشاء مسار فريد لكل رقم لمنع تداخل البيانات
+    // 1. الحل الجذري: إنشاء مجلد فريد لكل رقم هاتف لمنع تداخل الجلسات
     const userSessionPath = path.join(SESSIONS_DIR, `session_${phone}`);
 
-    try {
-        // حذف أي بقايا جلسة قديمة للرقم لضمان تسجيل دخول سريع بنسبة 100%
-        if (fs.existsSync(userSessionPath)) {
-            fs.rmSync(userSessionPath, { recursive: true, force: true });
-        }
+    // 2. تنظيف الجلسة القديمة فوراً لضمان عدم ظهور "الرقم مربوط مسبقاً" أو التعليق
+    if (fs.existsSync(userSessionPath)) {
+        fs.rmSync(userSessionPath, { recursive: true, force: true });
+    }
 
+    try {
         const { state, saveCreds } = await useMultiFileAuthState(userSessionPath);
         const { version } = await fetchLatestBaileysVersion();
 
@@ -34,16 +35,15 @@ app.get('/api/pairing', async (req, res) => {
             version: version,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            // هوية متصفح Ubuntu هي الأفضل لتخطي تعليق "جاري تسجيل الدخول" في Render
+            // 3. هوية متصفح مستقرة جداً لتخطي حماية واتساب ومنع "تعذر الربط"
             browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
         });
 
-        // هذا الجزء هو المسؤول عن إتمام عملية الربط فور إدخال الكود في هاتفك
+        // 4. إدارة الاتصال لضمان الانتقال من "جاري تسجيل الدخول" إلى "تم الربط"
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
             if (connection === 'open') {
-                console.log(`✅ تم الربط بنجاح للرقم: ${phone}`);
-                // يمكنك هنا إرسال رسالة ترحيبية للمستخدم عبر واتساب
+                console.log(`✅ Success: ${phone} is now linked.`);
             }
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
@@ -55,7 +55,7 @@ app.get('/api/pairing', async (req, res) => {
 
         socket.ev.on('creds.update', saveCreds);
 
-        // طلب الكود مباشرة لضمان عدم توقف الخدمة لأي مستخدم آخر
+        // طلب الكود لمرة واحدة فقط وبجلسة نظيفة
         await delay(3000); 
         const code = await socket.requestPairingCode(phone);
         
@@ -63,7 +63,7 @@ app.get('/api/pairing', async (req, res) => {
             res.json({ status: true, pairing_code: code });
         }
 
-        // إبقاء الجلسة نشطة لمدة دقيقتين فقط بانتظار إدخال الكود
+        // إغلاق الجلسة إذا لم يتم الربط خلال دقيقتين لتوفير موارد السيرفر
         setTimeout(() => {
             if (!socket.user) {
                 socket.end();
@@ -74,13 +74,15 @@ app.get('/api/pairing', async (req, res) => {
         }, 120000);
 
     } catch (err) {
-        console.error("Pairing Error:", err);
-        if (!res.headersSent) res.status(500).json({ error: "فشل، حاول مجدداً" });
+        console.error("Error:", err);
+        if (!res.headersSent) res.status(500).json({ error: "فشل السيرفر، جرب مرة أخرى" });
     }
 });
 
-app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.listen(port, () => {
-    console.log(`سيرفر فارس يعمل بنظام الجلسات المنفصلة على المنفذ ${port}`);
+    console.log(`Server is running on port ${port} - Public Mode Active`);
 });
