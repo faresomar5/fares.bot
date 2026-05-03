@@ -10,12 +10,12 @@ const port = process.env.PORT || 3000;
 
 const SESSION_ROOT = path.join(__dirname, 'sessions');
 
-// وظيفة الربط العامة
+// وظيفة الربط الاحترافية
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
-    let type = req.query.type || 'code'; // افتراضيًا الكود السريع، أو 'qr' للرمز
+    let type = req.query.type || 'code'; 
     
-    if (!phone && type === 'code') return res.json({ error: "يرجى إدخال الرقم للكود السريع" });
+    if (!phone && type === 'code') return res.json({ error: "أدخل الرقم للكود السريع" });
     if (phone) phone = phone.replace(/[^0-9]/g, '');
 
     const sessionId = `fares_${uuidv4()}`;
@@ -30,18 +30,18 @@ app.get('/api/pairing', async (req, res) => {
             auth: state,
             version: version,
             logger: pino({ level: "silent" }),
-            // هوية متصفح "شاملة" لتقليل الحظر الجغرافي وتخطي شاشة أمريكا
-            browser: ["Fares-Bot", "Chrome", "121.0.0.0"] 
+            // هوية متصفح عالمية لتخطي الحظر الجغرافي
+            browser: ["Fares-Bot", "Safari", "15.0"] 
         });
 
         socket.ev.on('creds.update', saveCreds);
 
-        // التعامل مع QR Code إذا طلب المستخدم
+        // دعم QR Code
         if (type === 'qr') {
             socket.ev.on('connection.update', (update) => {
                 const { qr } = update;
                 if (qr && !res.headersSent) {
-                    res.json({ status: true, qr_code: qr, message: "قم بمسح الكود ضوئياً" });
+                    res.json({ status: true, qr_code: qr });
                 }
             });
         }
@@ -49,8 +49,8 @@ app.get('/api/pairing', async (req, res) => {
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
             if (connection === 'open') {
-                console.log(`✅ تم الربط بنجاح`);
-                await socket.sendMessage(socket.user.id, { text: "✅ تم تفعيل منصة فارس العامة بنجاح!" });
+                console.log(`✅ Success`);
+                await socket.sendMessage(socket.user.id, { text: "✅ تم ربط نظام فارس بنجاح!" });
                 setTimeout(async () => {
                     socket.end();
                     await fs.remove(sessionDir);
@@ -64,7 +64,7 @@ app.get('/api/pairing', async (req, res) => {
             }
         });
 
-        // طلب الكود السريع (Pairing Code)
+        // طلب الكود السريع
         if (type === 'code') {
             await delay(3000); 
             const code = await socket.requestPairingCode(phone);
@@ -73,7 +73,6 @@ app.get('/api/pairing', async (req, res) => {
             }
         }
 
-        // تنظيف تلقائي
         setTimeout(async () => {
             if (!socket.user) {
                 socket.end();
@@ -83,14 +82,15 @@ app.get('/api/pairing', async (req, res) => {
 
     } catch (err) {
         await fs.remove(sessionDir);
-        if (!res.headersSent) res.status(500).json({ error: "حدث خطأ في السيرفر العام" });
+        if (!res.headersSent) res.status(500).json({ error: "خطأ في السيرفر" });
     }
 });
 
+// توجيه لصفحة الواجهة
 app.get('/', (req, res) => {
-    res.send("<h1>Fares-Bot Global System</h1><p>API is Ready for Pairing Code & QR</p>");
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(port, () => {
-    console.log(`Global System live on port ${port}`);
+    console.log(`Fares-Bot System is Live on port ${port}`);
 });
