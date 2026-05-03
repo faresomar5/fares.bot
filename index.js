@@ -8,9 +8,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 const sessionPassword = crypto.randomBytes(3).toString('hex').toUpperCase();
 
-// وظيفة تشغيل البوت الأساسية
 async function startFaresBot() {
-    // استخدام اسم المجلد الجديد لكسر وهم "الرقم مربوط مسبقاً"
+    // استخدام اسم مجلد جديد يمسح أي أثر للربط القديم الموهم
     const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'Fares_final_session'));
     const { version } = await fetchLatestBaileysVersion();
 
@@ -19,20 +18,19 @@ async function startFaresBot() {
         version: version,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        // الهوية التي أثبتت نجاحها في إرسال الإشعارات سابقاً
-        browser: ["Mac OS", "Chrome", "10.15.7"]
+        // تغيير الهوية لـ Ubuntu يسهل وصول الإشعارات في سيرفرات Render
+        browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
     });
 
     socket.ev.on('creds.update', saveCreds);
 
-    // معالج الحالة لحل مشكلة التعليق عند تسجيل الدخول
     socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'open') {
-            console.log("✅ تم الاتصال بنجاح!");
+            console.log("✅ Connected Successfully!");
             const myNumber = socket.user.id.split(':')[0] + "@s.whatsapp.net";
             await delay(5000);
-            await socket.sendMessage(myNumber, { text: `👑 *سيرفر فارس متصل*\n🔐 كلمة السر: ${sessionPassword}` });
+            await socket.sendMessage(myNumber, { text: `👑 سيرفر فارس متصل\n🔐 كلمة السر: ${sessionPassword}` });
         }
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== disconnectReason.loggedOut;
@@ -43,36 +41,27 @@ async function startFaresBot() {
     return socket;
 }
 
-// تشغيل المحرك عند بدء السيرفر
 startFaresBot();
 
-// API طلب كود الاقتران
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number?.replace(/[^0-9]/g, '');
     if (!phone) return res.json({ error: "الرقم مطلوب" });
 
     try {
-        // الربط بنفس مجلد الجلسة الجديد
         const { state } = await useMultiFileAuthState(path.join(__dirname, 'Fares_final_session'));
-        const tempSocket = makeWASocket({
+        const temp = makeWASocket({
             auth: state,
             logger: pino({ level: "silent" }),
-            browser: ["Mac OS", "Chrome", "10.15.7"]
+            browser: ["Ubuntu", "Chrome", "110.0.5481.177"]
         });
 
-        await delay(3000); 
-        const code = await tempSocket.requestPairingCode(phone);
-        
-        if (!res.headersSent) {
-            res.json({ status: true, pairing_code: code });
-        }
+        await delay(3500); // زيادة وقت الانتظار قليلاً لضمان المزامنة
+        const code = await temp.requestPairingCode(phone);
+        res.json({ status: true, pairing_code: code });
     } catch (err) {
-        res.status(500).json({ error: "فشل في طلب الكود، يرجى المحاولة بعد قليل" });
+        res.status(500).json({ error: "فشل، جرب مرة أخرى" });
     }
 });
 
 app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
-
-app.listen(port, () => {
-    console.log(`Server Online. Password: ${sessionPassword}`);
-});
+app.listen(port, () => { console.log(`Server Online. Password: ${sessionPassword}`); });
