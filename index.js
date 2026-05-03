@@ -1,57 +1,43 @@
 const express = require('express');
+const path = require('path');
 const { default: makeWASocket, useMultiFileAuthState, delay } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// الصفحة الرئيسية لتأكيد عمل السيرفر
-app.get('/', (req, res) => {
-    res.json({
-        status: "Online",
-        message: "سيرفر بوت فارس يعمل بنجاح",
-        endpoint: "/api/pairing"
-    });
-});
-
-// المسار الذي طلبته api/pairing
+// مسار الـ API الخاص بتوليد كود الربط
 app.get('/api/pairing', async (req, res) => {
     let phone = req.query.number;
-    
-    if (!phone) {
-        return res.json({ 
-            error: "نقص في البيانات", 
-            example: "https://fares.bot.onrender.com/api/pairing?number=9665xxxxxxxx" 
-        });
-    }
+    if (!phone) return res.json({ error: "يرجى إدخال رقم الهاتف" });
 
     try {
-        // إنشاء جلسة مؤقتة لتوليد الكود
         const { state, saveCreds } = await useMultiFileAuthState('session');
         const socket = makeWASocket({
             auth: state,
             printQRInTerminal: false,
             logger: pino({ level: "silent" }),
-            browser: ["Chrome (Linux)", "", ""]
+            browser: ["Ubuntu", "Chrome", "20.0.04"]
         });
 
         if (!socket.authState.creds.registered) {
-            await delay(1500);
+            await delay(2000);
             const code = await socket.requestPairingCode(phone);
-            res.json({
-                status: true,
-                author: "fares.bot",
-                pairing_code: code
-            });
+            res.json({ status: true, pairing_code: code });
         } else {
-            res.json({ status: false, message: "هذا الرقم مربوط بالفعل" });
+            res.json({ status: false, message: "الرقم مربوط مسبقاً" });
         }
     } catch (err) {
         res.status(500).json({ error: "خطأ في السيرفر", details: err.message });
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+// --- الكود المطلوب وضعه في آخر الملف لفتح الواجهة ---
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// تشغيل السيرفر
+app.listen(port, () => {
+    console.log(`سيرفر فارس يعمل على المنفذ ${port}`);
+});
