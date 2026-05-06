@@ -2,7 +2,7 @@
   "name": "fares-bot-pairing",
   "version": "1.0.0",
   "description": "WhatsApp pairing code service with Express + Baileys for Render",
-  "main": "server.js",
+  "main": "index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node index.js"
