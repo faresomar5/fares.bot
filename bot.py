@@ -15,7 +15,7 @@ def run_server():
     app_web.run(host='0.0.0.0', port=port)
 
 # --- الإعدادات المحدثة بالتوكن الجديد والاسم الجديد ---
-BASE_URL = "https://fares-bot-pairing.onrender.com" 
+BASE_URL = "https://fares-bot-eahg.onrender.com" 
 BOT_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I"
 
 async def get_pairing_code(phone):
