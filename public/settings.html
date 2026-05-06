@@ -1,181 +1,426 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOLDEN QUEEN | لوحة التحكم</title>
-    <style>
-        :root { --gold: #d4a017; --bg: #0b0b10; --card: rgba(22, 22, 30, 0.95); --red: #ff3b3b; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px 0; }
-        .panel { background: var(--card); width: 95%; max-width: 500px; padding: 25px; border-radius: 30px; border: 1px solid rgba(212,160,23,0.3); backdrop-filter: blur(10px); text-align: center; }
-        .logo-box { width: 60px; height: 60px; background: #1a1a24; border-radius: 50%; border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 25px; }
-        h1 { font-size: 20px; color: #fff; margin: 0; letter-spacing: 1px; }
-        .subtitle { color: #888; font-size: 10px; text-transform: uppercase; margin-bottom: 20px; }
-        
-        input[type="text"], input[type="password"], select { 
-            width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; border: 1px solid #333; 
-            background: rgba(0,0,0,0.5); color: #fff; text-align: center; box-sizing: border-box; 
-        }
-
-        .btn-gold { 
-            width: 100%; padding: 15px; background: linear-gradient(45deg, #d4a017, #f9d976); 
-            border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; 
-            font-size: 16px; margin-top: 20px; transition: 0.3s;
-        }
-        .btn-gold:hover { transform: scale(1.02); }
-
-        .setting-section { text-align: right; margin-top: 25px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 20px; }
-        .section-title { color: var(--gold); font-size: 13px; font-weight: bold; margin-bottom: 12px; display: block; border-right: 3px solid var(--gold); padding-right: 10px; }
-        
-        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
-        .setting-label { font-size: 13px; color: #ccc; }
-
-        /* Switches */
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background: #2ecc71; }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        #settings-ui { display: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>settings.html</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --border: #334155;
+      --code: #0b1220;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Tahoma", "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
+    .hero {
+      background: linear-gradient(135deg, rgba(34,197,94,.18), rgba(59,130,246,.12));
+      border: 1px solid rgba(148,163,184,.18);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.25);
+    }
+    h1, h2, h3 { margin: 0 0 12px; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.2rem; color: #f8fafc; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .summary-item {
+      background: rgba(15,23,42,.75);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      min-height: 92px;
+    }
+    .summary-label { display: block; color: var(--muted); font-size: .92rem; margin-bottom: 8px; }
+    .summary-value { word-break: break-word; color: #fff; font-weight: 700; }
+    .card {
+      background: rgba(17,24,39,.88);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      margin: 18px 0;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th, td { border-bottom: 1px solid rgba(148,163,184,.15); padding: 12px 10px; text-align: right; vertical-align: top; }
+    th { color: #cbd5e1; background: rgba(15,23,42,.65); position: sticky; top: 0; }
+    td code {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px 8px;
+      color: #93c5fd;
+      font-family: Consolas, monospace;
+      display: inline-block;
+    }
+    .note {
+      border-inline-start: 4px solid var(--accent);
+      background: rgba(34,197,94,.08);
+      padding: 14px 16px;
+      border-radius: 14px;
+      color: #dcfce7;
+    }
+    pre {
+      background: var(--code);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: .92rem;
+    }
+    .footer { color: var(--muted); text-align: center; margin-top: 24px; font-size: .92rem; }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <section class="hero">
+      <h1>إعدادات الموقع المستخرجة من الملف البرمجي</h1>
+      <p>تم تجميع إعدادات الموقع الافتراضية بالكامل في ملف HTML واحد، مع تنظيمها حسب الفئات وإظهار المفتاح البرمجي والاسم الظاهر والقيمة الافتراضية لكل إعداد.</p>
+      <div class="summary-grid"><div class="summary-item"><span class="summary-label">عدد الإعدادات</span><span class="summary-value">38</span></div><div class="summary-item"><span class="summary-label">رابط الموقع الأساسي</span><span class="summary-value">https://bot.goldenqueen.store</span></div><div class="summary-item"><span class="summary-label">صفحة الإعدادات</span><span class="summary-value">https://bot.goldenqueen.store/settings</span></div><div class="summary-item"><span class="summary-label">واجهة تحميل الإعدادات</span><span class="summary-value">https://bot.goldenqueen.store/api/settings/load</span></div><div class="summary-item"><span class="summary-label">واجهة حفظ الإعدادات</span><span class="summary-value">https://bot.goldenqueen.store/api/settings/save</span></div></div>
+    </section>
 
-    <div class="panel" id="login-ui">
-        <div class="logo-box">👑</div>
-        <h1>دخول المشرف</h1>
-        <p class="subtitle">Bot Management System</p>
-        <input type="text" id="phone" placeholder="رقم الهاتف (مثال: 967...)">
-        <input type="password" id="pass" placeholder="كلمة المرور 🔐">
-        <button class="btn-gold" onclick="login()">تسجيل الدخول</button>
-    </div>
+    <section class="card">
+      <h2>ملاحظات مهمة</h2>
+      <div class="note">
+        هذه الصفحة تعرض الإعدادات الافتراضية الخاصة بالموقع كما ظهرت داخل الكود، وليست بالضرورة القيم الحالية المخزنة على السيرفر. كما تم تجاهل الأسرار غير المرتبطة مباشرة بإعدادات الموقع مثل التوكنات وبيانات الجلسات.
+      </div>
+    </section>
 
-    <div class="panel" id="settings-ui">
-        <h1>إعدادات GOLDEN QUEEN ⚙️</h1>
-        <p class="subtitle">التحكم الكامل في وظائف البوت</p>
+    <section class="card">
+      <h2>بيانات تسجيل الدخول للموقع</h2>
+      <p>تمت إضافة رابط صفحة تسجيل الدخول الجديدة كما طلبت، مع توضيح حقول الدخول التي ظهرت في منطق تسجيل الدخول داخل الملف البرمجي.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>العنصر</th><th>القيمة</th><th>ملاحظات</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>رابط صفحة تسجيل الدخول</td>
+              <td><a href="https://fares-bot-eahg.onrender.com/settings.html" target="_blank" rel="noopener noreferrer">https://fares-bot-eahg.onrender.com/settings.html</a></td>
+              <td>الرابط الذي أرسلته لي لإضافته داخل الصفحة.</td>
+            </tr>
+            <tr>
+              <td>واجهة API الخاصة بتسجيل الدخول</td>
+              <td><a href="https://fares-bot-eahg.onrender.com/api/login" target="_blank" rel="noopener noreferrer">https://fares-bot-eahg.onrender.com/api/login</a></td>
+              <td>مبنية على نفس دومين صفحة الإعدادات وبنفس نمط الواجهات الظاهر في الكود.</td>
+            </tr>
+            <tr>
+              <td>حقل الرقم</td>
+              <td><code>num</code></td>
+              <td>يتم إرسال رقم واتساب كامل مع مفتاح الدولة.</td>
+            </tr>
+            <tr>
+              <td>حقل كلمة المرور</td>
+              <td><code>pass</code></td>
+              <td>يتم إرسال كلمة المرور الخاصة بالموقع.</td>
+            </tr>
+            <tr>
+              <td>معلومة إضافية</td>
+              <td><code>app</code></td>
+              <td>يظهر في تحميل الإعدادات بعد تسجيل الدخول، وليس كحقل أساسي في طلب تسجيل الدخول نفسه.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note" style="margin-top:14px">
+        حسب النص الظاهر في صفحة الإعدادات، الموقع يعرض عنوان GOLDEN QUEEN وقسم إعدادات متعدد مثل الخصوصية والحماية وإعدادات الحالات والبوت والرد الآلي.
+      </div>
+    </section>
 
-        <div class="setting-section">
-            <span class="section-title">الخصوصية والحماية (Privacy)</span>
-            <div class="setting-row">
-                <span class="setting-label">منع المكالمات (Anti-Call)</span>
-                <label class="switch"><input type="checkbox" id="antiCall"><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">قراءة الرسائل (Auto-Read)</span>
-                <label class="switch"><input type="checkbox" id="autoRead"><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">متصل دائماً (Always Online)</span>
-                <label class="switch"><input type="checkbox" id="alwaysOnline" checked><span class="slider"></span></label>
-            </div>
-        </div>
+    <section class="card">
+<h2>بيانات أساسية</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>اسم البوت</td>
+<td>fares</td>
+<td>Text</td>
+</tr><tr>
+<td><code>ownerNumber</code></td>
+<td>رقم التواصل</td>
+<td>967773987296</td>
+<td>Text</td>
+</tr><tr>
+<td><code>ownername</code></td>
+<td>اسم المالك</td>
+<td>fares</td>
+<td>Text</td>
+</tr><tr>
+<td><code>description</code></td>
+<td>المعلومات التعريفية</td>
+<td>🔗 القناة الرسمية: https://whatsapp.com/channel/0029Vb73l855K3zVq2QgsH1M<br>📞 رقم التواصل: 967773987296</td>
+<td>Multiline text</td>
+</tr><tr>
+<td><code>from</code></td>
+<td>الموقع</td>
+<td>Yemen</td>
+<td>Text</td>
+</tr><tr>
+<td><code>age</code></td>
+<td>العمر</td>
+<td>24</td>
+<td>Text</td>
+</tr><tr>
+<td><code>prefix</code></td>
+<td>البادئة</td>
+<td>.</td>
+<td>Text</td>
+</tr><tr>
+<td><code>footer2</code></td>
+<td>الفوتر</td>
+<td>fares</td>
+<td>Text</td>
+</tr><tr>
+<td><code>mode</code></td>
+<td>الوضع</td>
+<td>private</td>
+<td>Text</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section><section class="card">
+<h2>الأمان والحماية</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>antiBad</code></td>
+<td>مكافحة الكلمات السيئة</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>antiLink</code></td>
+<td>مكافحة الروابط</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>antiDelete</code></td>
+<td>مكافحة الحذف</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>antiBug</code></td>
+<td>مكافحة البق</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>antiBot</code></td>
+<td>مكافحة البوت</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>antiBotAction</code></td>
+<td>إجراء مكافحة البوت</td>
+<td>delete</td>
+<td>Text</td>
+</tr><tr>
+<td><code>antiCall</code></td>
+<td>مكافحة الاتصالات</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>excludeCallNumbers</code></td>
+<td>أرقام مستثناة من مكافحة الاتصالات</td>
+<td>—</td>
+<td>Text</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section><section class="card">
+<h2>الأتمتة والتفاعل</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>autoRecording</code></td>
+<td>تسجيل تلقائي</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoTyping</code></td>
+<td>كتابة تلقائية</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>alwaysOnline</code></td>
+<td>دائمًا أونلاين</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoStatusRead</code></td>
+<td>مشاهدة الحالة تلقائيًا</td>
+<td>on</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoStatusReact</code></td>
+<td>التفاعل مع الحالة تلقائيًا</td>
+<td>on</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoRead</code></td>
+<td>قراءة تلقائية</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoBlock</code></td>
+<td>حظر تلقائي</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoReact</code></td>
+<td>تفاعل تلقائي</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>autoVoice</code></td>
+<td>صوت تلقائي</td>
+<td>off</td>
+<td>Toggle</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section><section class="card">
+<h2>الحالة والمنشورات</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sendDeleteTo</code></td>
+<td>إرسال المحذوف إلى</td>
+<td>owner</td>
+<td>Text</td>
+</tr><tr>
+<td><code>statusMsgSend</code></td>
+<td>إرسال رسالة على الحالة</td>
+<td>off</td>
+<td>Toggle</td>
+</tr><tr>
+<td><code>statusMsgType</code></td>
+<td>نوع رسالة الحالة</td>
+<td>default</td>
+<td>Text</td>
+</tr><tr>
+<td><code>customMsg</code></td>
+<td>رسالة الحالة المخصصة</td>
+<td>🔗 القناة الرسمية: https://whatsapp.com/channel/0029Vb73l855K3zVq2QgsH1M<br>📞 رقم التواصل: 967773987296</td>
+<td>Multiline text</td>
+</tr><tr>
+<td><code>statusCustomReact</code></td>
+<td>رموز تعبيرية للحالة (10 كحد أقصى)</td>
+<td>—</td>
+<td>Text</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section><section class="card">
+<h2>الصور والوسائط</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>menu</code></td>
+<td>صورة المنيو</td>
+<td>https://i.ibb.co/DfXkGJM1/77963b2740a0.jpg</td>
+<td>URL</td>
+</tr><tr>
+<td><code>alive</code></td>
+<td>صورة alive</td>
+<td>https://i.ibb.co/DfXkGJM1/77963b2740a0.jpg</td>
+<td>URL</td>
+</tr><tr>
+<td><code>owner</code></td>
+<td>صورة المالك</td>
+<td>https://i.ibb.co/DfXkGJM1/77963b2740a0.jpg</td>
+<td>URL</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section><section class="card">
+<h2>إعدادات الجروب والوقت</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gaGroupJid</code></td>
+<td>معرف الجروب</td>
+<td>—</td>
+<td>Text</td>
+</tr><tr>
+<td><code>gaTimezone</code></td>
+<td>المنطقة الزمنية</td>
+<td>Asia/Colombo</td>
+<td>Text</td>
+</tr><tr>
+<td><code>gaCloseTime</code></td>
+<td>وقت الإغلاق</td>
+<td>15:00</td>
+<td>Time</td>
+</tr><tr>
+<td><code>gaOpenTime</code></td>
+<td>وقت الفتح</td>
+<td>05:00</td>
+<td>Time</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 
-        <div class="setting-section">
-            <span class="section-title">إعدادات الحالات (Status)</span>
-            <div class="setting-row">
-                <span class="setting-label">مشاهدة الحالات تلقائياً</span>
-                <label class="switch"><input type="checkbox" id="autoStatusRead" checked><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">تفاعل الحالات (React)</span>
-                <label class="switch"><input type="checkbox" id="autoStatusReact" checked><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">إيموجي التفاعل</span>
-                <input type="text" id="statusEmoji" style="width: 60px; margin: 0;" value="❤️">
-            </div>
-        </div>
+    <section class="card">
+      <h2>الحمولة الكاملة للإعدادات بصيغة واحدة</h2>
+      <pre>{&#x27;name&#x27;: &#x27;fares&#x27;, &#x27;from&#x27;: &#x27;Yemen&#x27;, &#x27;age&#x27;: &#x27;24&#x27;, &#x27;prefix&#x27;: &#x27;.&#x27;, &#x27;footer2&#x27;: &#x27;fares&#x27;, &#x27;mode&#x27;: &#x27;private&#x27;, &#x27;antiBad&#x27;: &#x27;off&#x27;, &#x27;antiLink&#x27;: &#x27;off&#x27;, &#x27;autoRecording&#x27;: &#x27;off&#x27;, &#x27;autoTyping&#x27;: &#x27;off&#x27;, &#x27;alwaysOnline&#x27;: &#x27;off&#x27;, &#x27;autoStatusRead&#x27;: &#x27;on&#x27;, &#x27;autoStatusReact&#x27;: &#x27;on&#x27;, &#x27;autoRead&#x27;: &#x27;off&#x27;, &#x27;autoBlock&#x27;: &#x27;off&#x27;, &#x27;autoReact&#x27;: &#x27;off&#x27;, &#x27;autoVoice&#x27;: &#x27;off&#x27;, &#x27;antiDelete&#x27;: &#x27;off&#x27;, &#x27;sendDeleteTo&#x27;: &#x27;owner&#x27;, &#x27;antiCall&#x27;: &#x27;off&#x27;, &#x27;excludeCallNumbers&#x27;: &#x27;&#x27;, &#x27;statusMsgSend&#x27;: &#x27;off&#x27;, &#x27;statusMsgType&#x27;: &#x27;default&#x27;, &#x27;customMsg&#x27;: &#x27;🔗 القناة الرسمية: https://whatsapp.com/channel/0029Vb73l855K3zVq2QgsH1M\n📞 رقم التواصل: 967773987296&#x27;, &#x27;ownerNumber&#x27;: &#x27;967773987296&#x27;, &#x27;ownername&#x27;: &#x27;fares&#x27;, &#x27;description&#x27;: &#x27;🔗 القناة الرسمية: https://whatsapp.com/channel/0029Vb73l855K3zVq2QgsH1M\n📞 رقم التواصل: 967773987296&#x27;, &#x27;gaGroupJid&#x27;: &#x27;&#x27;, &#x27;gaTimezone&#x27;: &#x27;Asia/Colombo&#x27;, &#x27;gaCloseTime&#x27;: &#x27;15:00&#x27;, &#x27;gaOpenTime&#x27;: &#x27;05:00&#x27;, &#x27;menu&#x27;: &#x27;https://i.ibb.co/DfXkGJM1/77963b2740a0.jpg&#x27;, &#x27;alive&#x27;: &#x27;https://i.ibb.co/DfXkGJM1/77963b2740a0.jpg&#x27;, &#x27;owner&#x27;: &#x27;https://i.ibb.co/DfXkGJM1/77963b2740a0.jpg&#x27;, &#x27;statusCustomReact&#x27;: &#x27;&#x27;, &#x27;antiBug&#x27;: &#x27;off&#x27;, &#x27;antiBot&#x27;: &#x27;off&#x27;, &#x27;antiBotAction&#x27;: &#x27;delete&#x27;}</pre>
+    </section>
 
-        <div class="setting-section">
-            <span class="section-title">البوت والرد الآلي (Bot & Auto)</span>
-            <div class="setting-row">
-                <span class="setting-label">بايو تلقائي (Auto-Bio)</span>
-                <label class="switch"><input type="checkbox" id="autoBio"><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">روبوت المحادثة (Chat-Bot)</span>
-                <label class="switch"><input type="checkbox" id="chatBot"><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">الوضع (Mode)</span>
-                <select id="botMode" style="width: 100px; margin: 0;">
-                    <option value="public">عام (Public)</option>
-                    <option value="private">خاص (Private)</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="setting-section">
-            <span class="section-title">إعدادات المجموعات (Groups)</span>
-            <div class="setting-row">
-                <span class="setting-label">منع الروابط (Anti-Link)</span>
-                <label class="switch"><input type="checkbox" id="antiLink"><span class="slider"></span></label>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">منع الحذف (Anti-Delete)</span>
-                <label class="switch"><input type="checkbox" id="antiDelete" checked><span class="slider"></span></label>
-            </div>
-        </div>
-
-        <button class="btn-gold" onclick="saveSettings()">حفظ جميع الإعدادات ✅</button>
-    </div>
-
-    <script>
-        async function login() {
-            const phone = document.getElementById('phone').value;
-            const pass = document.getElementById('pass').value;
-
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ number: phone, password: pass })
-            });
-
-            const data = await res.json();
-            if(data.success) {
-                localStorage.setItem('phone', phone);
-                localStorage.setItem('pass', pass);
-                document.getElementById('login-ui').style.display = 'none';
-                document.getElementById('settings-ui').style.display = 'block';
-            } else {
-                alert("خطأ في رقم الهاتف أو كلمة السر");
-            }
-        }
-
-        async function saveSettings() {
-            const settings = {
-                antiCall: document.getElementById('antiCall').checked,
-                autoRead: document.getElementById('autoRead').checked,
-                alwaysOnline: document.getElementById('alwaysOnline').checked,
-                autoStatusRead: document.getElementById('autoStatusRead').checked,
-                autoStatusReact: document.getElementById('autoStatusReact').checked,
-                statusEmoji: document.getElementById('statusEmoji').value,
-                autoBio: document.getElementById('autoBio').checked,
-                chatBot: document.getElementById('chatBot').checked,
-                botMode: document.getElementById('botMode').value,
-                antiLink: document.getElementById('antiLink').checked,
-                antiDelete: document.getElementById('antiDelete').checked
-            };
-
-            const res = await fetch('/api/settings/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    number: localStorage.getItem('phone'),
-                    password: localStorage.getItem('pass'),
-                    settings: settings
-                })
-            });
-
-            const data = await res.json();
-            if(data.success) {
-                alert("تم حفظ الإعدادات وتطبيقها بنجاح ✅");
-            } else {
-                alert("حدث خطأ أثناء الحفظ");
-            }
-        }
-    </script>
+    <div class="footer">اسم الملف المطلوب: settings.html</div>
+  </div>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
