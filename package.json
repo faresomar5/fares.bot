@@ -1,5 +1,5 @@
 {
-  "name": "fares-bot",
+  "name": "fares-bot-pairing",
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
