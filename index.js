@@ -9,23 +9,22 @@ const {
   fetchLatestBaileysVersion,
   DisconnectReason,
   makeCacheableSignalKeyStore,
-  Browsers,
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
-const AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, 'storage', 'baileys_auth');
-const logger = Pino({ level: 'info' });
+const HOST = '0.0.0.0';
+const AUTH_DIR = path.join(__dirname, 'storage', 'baileys_auth');
+const logger = Pino({ level: 'silent' });
 
-// إنشاء مجلد التخزين للتوافق مع القرص المستمر في Render
 if (!fs.existsSync(AUTH_DIR)) {
     fs.mkdirSync(AUTH_DIR, { recursive: true });
 }
 
 app.use(cors());
 app.use(express.json());
+// هذا السطر هو المسؤول عن تشغيل صفحة الإعدادات وواجهة الموقع
 app.use(express.static(path.join(__dirname, 'public')));
 
 let sock = null;
@@ -41,7 +40,7 @@ async function startSocket() {
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
     logger,
-    browser: ["Ubuntu", "Chrome", "20.0.0"], 
+    browser: ["Ubuntu", "Chrome", "20.0.0"],
     printQRInTerminal: false,
     markOnlineOnConnect: true,
   });
@@ -50,44 +49,22 @@ async function startSocket() {
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
-
-    // إرسال رسالة عند نجاح الاتصال
     if (connection === 'open') {
-      console.log('✅ Connected to WhatsApp');
       const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const welcomeMsg = `✅ *تم تفعيل البوت بنجاح!*\n\n⚙️ *إعدادات البوت:* https://bot-eahg.onrender.com/settings.html\n🔑 *كلمة السر:* Fares-9900`;
-      
-      try {
-        await sock.sendMessage(userJid, { text: welcomeMsg });
-      } catch (err) {
-        console.error('Failed to send welcome message:', err);
-      }
+      const welcomeMsg = `✅ *تم التفعيل بنجاح*\n\n⚙️ *الإعدادات:* https://bot-eahg.onrender.com/settings.html\n🔑 *كلمة السر:* Fares-9900`;
+      await sock.sendMessage(userJid, { text: welcomeMsg });
     }
-
     if (connection === 'close') {
       const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      if (statusCode !== DisconnectReason.loggedOut) {
-        startSocket();
-      } else {
-        fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-        startSocket();
-      }
+      if (statusCode !== DisconnectReason.loggedOut) startSocket();
     }
   });
 
-  // ميزة التفاعل التلقائي مع الحالات (Status Auto-React)
-  sock.ev.on('messages.upsert', async (chatUpdate) => {
-    try {
-      const msg = chatUpdate.messages[0];
-      if (!msg.message || msg.key.remoteJid !== 'status@broadcast') return;
-      
-      // التفاعل برمز تعبيري (قلب ❤️)
-      await sock.sendMessage('status@broadcast', {
-        react: { text: '❤️', key: msg.key }
-      }, { statusJidList: [msg.key.participant] });
-      
-    } catch (e) {
-      // تجاهل أخطاء الحالات لضمان استقرار السيرفر
+  // التفاعل التلقائي مع الحالات
+  sock.ev.on('messages.upsert', async (m) => {
+    const msg = m.messages[0];
+    if (msg.key.remoteJid === 'status@broadcast') {
+      await sock.sendMessage('status@broadcast', { react: { text: '❤️', key: msg.key } }, { statusJidList: [msg.key.participant] });
     }
   });
 
@@ -96,20 +73,18 @@ async function startSocket() {
 
 app.get('/api/pairing', async (req, res) => {
   let number = req.query.number?.replace(/\D/g, '');
-  if (!number) return res.status(400).json({ status: false, message: 'Missing number' });
-
+  if (!number) return res.status(400).json({ status: false });
   try {
     if (!sock) await startSocket();
-    
-    // انتظار 5 ثوانٍ لضمان استقرار الاتصال قبل طلب الكود
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
+    await new Promise(r => setTimeout(r, 5000));
     const code = await sock.requestPairingCode(number);
     res.json({ status: true, pairing_code: code });
-  } catch (error) {
-    console.error('Pairing Error:', error);
-    res.status(500).json({ status: false, message: 'Pairing failed' });
-  }
+  } catch (err) { res.status(500).json({ status: false }); }
+});
+
+// توجيه لفتح صفحة الإعدادات عند طلبها
+app.get('/settings', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'settings.html'));
 });
 
 app.get('*', (req, res) => {
@@ -117,6 +92,6 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
   startSocket();
 });
