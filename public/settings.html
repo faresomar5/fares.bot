@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -6,23 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOLDEN QUEEN | لوحة التحكم</title>
     <style>
-        :root { --gold: #d4a017; --bg: #0b0b10; --card: rgba(22, 22, 30, 0.95); }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .panel { background: var(--card); width: 90%; max-width: 450px; padding: 35px; border-radius: 30px; border: 1px solid rgba(212,160,23,0.3); backdrop-filter: blur(10px); text-align: center; }
-        .logo-box { width: 70px; height: 70px; background: #1a1a24; border-radius: 50%; border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 30px; }
-        h1 { font-size: 24px; color: #fff; margin: 0; letter-spacing: 1px; }
-        .subtitle { color: #888; font-size: 11px; text-transform: uppercase; margin-bottom: 30px; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 16px; margin: 10px 0; border-radius: 15px; border: 1px solid #333; background: rgba(0,0,0,0.5); color: #fff; text-align: center; box-sizing: border-box; }
-        .btn-gold { width: 100%; padding: 16px; background: linear-gradient(45deg, #d4a017, #f9d976); border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 15px; }
-        .remember-me { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; color: #aaa; margin: 15px 0; }
-        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #222; text-align: right; }
-        #settings-ui { display: none; } /* هذا الجزء سيظهر بعد تسجيل الدخول */
-        .switch { position: relative; display: inline-block; width: 45px; height: 22px; }
+        :root { --gold: #d4a017; --bg: #0b0b10; --card: rgba(22, 22, 30, 0.95); --red: #ff3b3b; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px 0; }
+        .panel { background: var(--card); width: 95%; max-width: 500px; padding: 25px; border-radius: 30px; border: 1px solid rgba(212,160,23,0.3); backdrop-filter: blur(10px); text-align: center; }
+        .logo-box { width: 60px; height: 60px; background: #1a1a24; border-radius: 50%; border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 25px; }
+        h1 { font-size: 20px; color: #fff; margin: 0; letter-spacing: 1px; }
+        .subtitle { color: #888; font-size: 10px; text-transform: uppercase; margin-bottom: 20px; }
+        
+        input[type="text"], input[type="password"], select { 
+            width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; border: 1px solid #333; 
+            background: rgba(0,0,0,0.5); color: #fff; text-align: center; box-sizing: border-box; 
+        }
+
+        .btn-gold { 
+            width: 100%; padding: 15px; background: linear-gradient(45deg, #d4a017, #f9d976); 
+            border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; 
+            font-size: 16px; margin-top: 20px; transition: 0.3s;
+        }
+        .btn-gold:hover { transform: scale(1.02); }
+
+        .setting-section { text-align: right; margin-top: 25px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 20px; }
+        .section-title { color: var(--gold); font-size: 13px; font-weight: bold; margin-bottom: 12px; display: block; border-right: 3px solid var(--gold); padding-right: 10px; }
+        
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
+        .setting-label { font-size: 13px; color: #ccc; }
+
+        /* Switches */
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; transition: .4s; border-radius: 50%; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background: #2ecc71; }
-        input:checked + .slider:before { transform: translateX(23px); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        #settings-ui { display: none; }
     </style>
 </head>
 <body>
@@ -30,109 +46,135 @@
     <div class="panel" id="login-ui">
         <div class="logo-box">👑</div>
         <h1>دخول المشرف</h1>
-        <p class="subtitle">Contact Save Administration</p>
-        
-        <input type="text" id="phone" placeholder="رقم المالك (مثال: 967...)">
+        <p class="subtitle">Bot Management System</p>
+        <input type="text" id="phone" placeholder="رقم الهاتف (مثال: 967...)">
         <input type="password" id="pass" placeholder="كلمة المرور 🔐">
-        
-        <div class="remember-me">
-            <input type="checkbox" id="remember">
-            <label for="remember">تذكير الرقم وكلمة السر</label>
-        </div>
-
         <button class="btn-gold" onclick="login()">تسجيل الدخول</button>
     </div>
 
     <div class="panel" id="settings-ui">
-        <h1>إعدادات السيرفر ⚙️</h1>
-        <p class="subtitle">تحكم في خيارات البوت</p>
+        <h1>إعدادات GOLDEN QUEEN ⚙️</h1>
+        <p class="subtitle">التحكم الكامل في وظائف البوت</p>
 
-        <div class="setting-row">
-            <span>إيموجي التفاعل</span>
-            <input type="text" id="emoji" style="width: 50px; padding: 5px; margin: 0;" value="❤️">
+        <div class="setting-section">
+            <span class="section-title">الخصوصية والحماية (Privacy)</span>
+            <div class="setting-row">
+                <span class="setting-label">منع المكالمات (Anti-Call)</span>
+                <label class="switch"><input type="checkbox" id="antiCall"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">قراءة الرسائل (Auto-Read)</span>
+                <label class="switch"><input type="checkbox" id="autoRead"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">متصل دائماً (Always Online)</span>
+                <label class="switch"><input type="checkbox" id="alwaysOnline" checked><span class="slider"></span></label>
+            </div>
         </div>
 
-        <div class="setting-row">
-            <span>قراءة الحالات (Auto-Read)</span>
-            <label class="switch"><input type="checkbox" id="autoRead" checked><span class="slider"></span></label>
+        <div class="setting-section">
+            <span class="section-title">إعدادات الحالات (Status)</span>
+            <div class="setting-row">
+                <span class="setting-label">مشاهدة الحالات تلقائياً</span>
+                <label class="switch"><input type="checkbox" id="autoStatusRead" checked><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">تفاعل الحالات (React)</span>
+                <label class="switch"><input type="checkbox" id="autoStatusReact" checked><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">إيموجي التفاعل</span>
+                <input type="text" id="statusEmoji" style="width: 60px; margin: 0;" value="❤️">
+            </div>
         </div>
 
-        <div class="setting-row">
-            <span>منع المكالمات (Anti-Call)</span>
-            <label class="switch"><input type="checkbox" id="antiCall" checked><span class="slider"></span></label>
+        <div class="setting-section">
+            <span class="section-title">البوت والرد الآلي (Bot & Auto)</span>
+            <div class="setting-row">
+                <span class="setting-label">بايو تلقائي (Auto-Bio)</span>
+                <label class="switch"><input type="checkbox" id="autoBio"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">روبوت المحادثة (Chat-Bot)</span>
+                <label class="switch"><input type="checkbox" id="chatBot"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">الوضع (Mode)</span>
+                <select id="botMode" style="width: 100px; margin: 0;">
+                    <option value="public">عام (Public)</option>
+                    <option value="private">خاص (Private)</option>
+                </select>
+            </div>
         </div>
 
-        <div class="setting-row">
-            <span>متصل دائماً (Always Online)</span>
-            <label class="switch"><input type="checkbox" id="alwaysOnline" checked><span class="slider"></span></label>
+        <div class="setting-section">
+            <span class="section-title">إعدادات المجموعات (Groups)</span>
+            <div class="setting-row">
+                <span class="setting-label">منع الروابط (Anti-Link)</span>
+                <label class="switch"><input type="checkbox" id="antiLink"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">منع الحذف (Anti-Delete)</span>
+                <label class="switch"><input type="checkbox" id="antiDelete" checked><span class="slider"></span></label>
+            </div>
         </div>
 
-        <div class="setting-row">
-            <span>منع الحذف (Anti-Delete)</span>
-            <label class="switch"><input type="checkbox" id="antiDelete" checked><span class="slider"></span></label>
-        </div>
-
-        <div class="setting-row">
-            <span>الوضع العام (Public)</span>
-            <label class="switch"><input type="checkbox" id="publicMode" checked><span class="slider"></span></label>
-        </div>
-
-        <button class="btn-gold" onclick="save()">حفظ الإعدادات</button>
+        <button class="btn-gold" onclick="saveSettings()">حفظ جميع الإعدادات ✅</button>
     </div>
 
     <script>
-        // تحميل البيانات المحفوظة عند فتح الصفحة
-        window.onload = () => {
-            if(localStorage.getItem('phone')) {
-                document.getElementById('phone').value = localStorage.getItem('phone');
-                document.getElementById('pass').value = localStorage.getItem('pass');
-                document.getElementById('remember').checked = true;
-            }
-        };
-
-        // وظيفة تسجيل الدخول المربوطة بالسيرفر
         async function login() {
-            const phoneValue = document.getElementById('phone').value;
-            const passValue = document.getElementById('pass').value;
+            const phone = document.getElementById('phone').value;
+            const pass = document.getElementById('pass').value;
 
-            if(!phoneValue || !passValue) {
-                alert("يرجى إدخال الرقم وكلمة السر");
-                return;
-            }
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: phone, password: pass })
+            });
 
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ number: phoneValue, password: passValue })
-                });
-
-                const data = await res.json();
-
-                if(data.success) {
-                    // حفظ البيانات في المتصفح إذا تم تفعيل "تذكرني"
-                    if(document.getElementById('remember').checked) {
-                        localStorage.setItem('phone', phoneValue);
-                        localStorage.setItem('pass', passValue);
-                    } else {
-                        localStorage.removeItem('phone');
-                        localStorage.removeItem('pass');
-                    }
-
-                    // إخفاء واجهة الدخول وإظهار الإعدادات
-                    document.getElementById('login-ui').style.display = 'none';
-                    document.getElementById('settings-ui').style.display = 'block';
-                } else {
-                    alert(data.message || "بيانات الدخول خاطئة");
-                }
-            } catch (error) {
-                console.error("Login error:", error);
-                alert("تعذر الاتصال بالسيرفر، تأكد من تشغيل البوت");
+            const data = await res.json();
+            if(data.success) {
+                localStorage.setItem('phone', phone);
+                localStorage.setItem('pass', pass);
+                document.getElementById('login-ui').style.display = 'none';
+                document.getElementById('settings-ui').style.display = 'block';
+            } else {
+                alert("خطأ في رقم الهاتف أو كلمة السر");
             }
         }
 
-        function save() { 
-            alert("تم حفظ الإعدادات بنجاح وسيتم تطبيقها خلال 3 دقائق ✅"); 
+        async function saveSettings() {
+            const settings = {
+                antiCall: document.getElementById('antiCall').checked,
+                autoRead: document.getElementById('autoRead').checked,
+                alwaysOnline: document.getElementById('alwaysOnline').checked,
+                autoStatusRead: document.getElementById('autoStatusRead').checked,
+                autoStatusReact: document.getElementById('autoStatusReact').checked,
+                statusEmoji: document.getElementById('statusEmoji').value,
+                autoBio: document.getElementById('autoBio').checked,
+                chatBot: document.getElementById('chatBot').checked,
+                botMode: document.getElementById('botMode').value,
+                antiLink: document.getElementById('antiLink').checked,
+                antiDelete: document.getElementById('antiDelete').checked
+            };
+
+            const res = await fetch('/api/settings/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    number: localStorage.getItem('phone'),
+                    password: localStorage.getItem('pass'),
+                    settings: settings
+                })
+            });
+
+            const data = await res.json();
+            if(data.success) {
+                alert("تم حفظ الإعدادات وتطبيقها بنجاح ✅");
+            } else {
+                alert("حدث خطأ أثناء الحفظ");
+            }
         }
     </script>
 </body>
