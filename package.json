@@ -1,7 +1,7 @@
 {
-  "name": "fares-bot-pairing",
+  "name": "fares-bot",
   "version": "1.0.0",
-  "description": "WhatsApp pairing code service with Express + Baileys for Render",
+  "description": "WhatsApp pairing code server",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -11,10 +11,9 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "^7.0.0-rc.6",
-    "cors": "^2.8.5",
+    "@whiskeysockets/baileys": "^6.6.0",
     "express": "^4.21.2",
-    "pino": "^9.5.0"
+    "pino": "^8.21.0",
+    "cors": "^2.8.5"
   }
 }
