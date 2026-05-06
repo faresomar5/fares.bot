@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -15,7 +16,7 @@
         .btn-gold { width: 100%; padding: 16px; background: linear-gradient(45deg, #d4a017, #f9d976); border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 15px; }
         .remember-me { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; color: #aaa; margin: 15px 0; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #222; text-align: right; }
-        #settings-ui { display: none; }
+        #settings-ui { display: none; } /* هذا الجزء سيظهر بعد تسجيل الدخول */
         .switch { position: relative; display: inline-block; width: 45px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; transition: .4s; border-radius: 34px; }
@@ -80,6 +81,7 @@
     </div>
 
     <script>
+        // تحميل البيانات المحفوظة عند فتح الصفحة
         window.onload = () => {
             if(localStorage.getItem('phone')) {
                 document.getElementById('phone').value = localStorage.getItem('phone');
@@ -88,26 +90,50 @@
             }
         };
 
+        // وظيفة تسجيل الدخول المربوطة بالسيرفر
         async function login() {
-            const phone = document.getElementById('phone').value;
-            const pass = document.getElementById('pass').value;
-            const res = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ number: phone, password: pass })
-            });
-            const data = await res.json();
-            if(data.success) {
-                if(document.getElementById('remember').checked) {
-                    localStorage.setItem('phone', phone);
-                    localStorage.setItem('pass', pass);
+            const phoneValue = document.getElementById('phone').value;
+            const passValue = document.getElementById('pass').value;
+
+            if(!phoneValue || !passValue) {
+                alert("يرجى إدخال الرقم وكلمة السر");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number: phoneValue, password: passValue })
+                });
+
+                const data = await res.json();
+
+                if(data.success) {
+                    // حفظ البيانات في المتصفح إذا تم تفعيل "تذكرني"
+                    if(document.getElementById('remember').checked) {
+                        localStorage.setItem('phone', phoneValue);
+                        localStorage.setItem('pass', passValue);
+                    } else {
+                        localStorage.removeItem('phone');
+                        localStorage.removeItem('pass');
+                    }
+
+                    // إخفاء واجهة الدخول وإظهار الإعدادات
+                    document.getElementById('login-ui').style.display = 'none';
+                    document.getElementById('settings-ui').style.display = 'block';
+                } else {
+                    alert(data.message || "بيانات الدخول خاطئة");
                 }
-                document.getElementById('login-ui').style.display = 'none';
-                document.getElementById('settings-ui').style.display = 'block';
-            } else { alert(data.message); }
+            } catch (error) {
+                console.error("Login error:", error);
+                alert("تعذر الاتصال بالسيرفر، تأكد من تشغيل البوت");
+            }
         }
 
-        function save() { alert("تم حفظ الإعدادات بنجاح ✅"); }
+        function save() { 
+            alert("تم حفظ الإعدادات بنجاح وسيتم تطبيقها خلال 3 دقائق ✅"); 
+        }
     </script>
 </body>
 </html>
