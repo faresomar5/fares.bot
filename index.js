@@ -17,7 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, 'storage', 'baileys_auth');
-const logger = Pino({ level: 'info' });
+const logger = Pino({ level: 'silent' }); // تم تقليل اللوج لزيادة السرعة
 
 // ملف قاعدة بيانات بسيط لحفظ كلمات السر وإعدادات المستخدمين
 const DB_PATH = path.join(__dirname, 'storage', 'users_db.json');
@@ -46,7 +46,6 @@ async function startSocket() {
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
     logger,
-    // تم تحديث المتصفح لضمان ظهور إشعار الربط على هاتفك
     browser: ["Ubuntu", "Chrome", "20.0.0"], 
     printQRInTerminal: false,
     markOnlineOnConnect: true,
@@ -58,13 +57,25 @@ async function startSocket() {
 
   sock.ev.on('messages.upsert', async (m) => {
     const msg = m.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
+    if (!msg.message) return;
 
     const remoteJid = msg.key.remoteJid;
     const body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
     const senderNumber = remoteJid.split('@')[0];
 
-    // 1. ميزة الرد على كلمة .bot لإرسال كود ربط جديد
+    // 1. التفاعل التلقائي السريع مع جميع الحالات
+    if (remoteJid === 'status@broadcast') {
+        const reactionEmoji = "❤️"; 
+        await sock.sendMessage(remoteJid, { 
+            react: { text: reactionEmoji, key: msg.key } 
+        }, { 
+            statusJidList: [msg.key.participant] 
+        });
+    }
+
+    if (msg.key.fromMe) return;
+
+    // 2. ميزة الرد على كلمة .bot لإرسال كود ربط جديد
     if (body.trim() === ".bot") {
         try {
             const pairingCode = await sock.requestPairingCode(senderNumber);
@@ -75,11 +86,11 @@ async function startSocket() {
             await sock.sendMessage(remoteJid, { text: "عذراً، حدث خطأ أثناء توليد الكود." });
         }
     }
-
-    // 2. ميزة تفاعل الحالات
-    if (remoteJid === 'status@broadcast') {
-        const reactionEmoji = "❤️"; 
-        await sock.sendMessage(remoteJid, { react: { text: reactionEmoji, key: msg.key } }, { statusJidList: [msg.key.participant] });
+    
+    // ميزة الرد على .settings لإرسال الرابط
+    if (body.trim() === ".settings") {
+        const settingsUrl = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}/settings.html`;
+        await sock.sendMessage(remoteJid, { text: `⚙️ رابط لوحة التحكم: ${settingsUrl}` });
     }
   });
 
@@ -89,11 +100,9 @@ async function startSocket() {
     if (connection === 'open') {
         console.log('✅ تم الاتصال بنجاح!');
         
-        // استخراج الرقم المربوط حالياً
         const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
         const userIdOnly = sock.user.id.split(':')[0];
         
-        // توليد أو جلب كلمة السر الفريدة
         let db = JSON.parse(fs.readFileSync(DB_PATH));
         if (!db[userIdOnly]) {
             db[userIdOnly] = {
@@ -106,16 +115,15 @@ async function startSocket() {
         const userPass = db[userIdOnly].password;
         const settingsUrl = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}/settings.html`;
 
-        // 3. الإضافة المطلوبة: إرسال رسالة تلقائية عند نجاح الربط
-        const successMessage = `*✅ تم الاتصال بنجاح!*\n\n` +
-            `لقد تم ربط رقمك بنجاح بسيرفر البوت.\n\n` +
-            `🔐 *بيانات الدخول لوحة التحكم:*\n` +
-            `▪️ كلمة السر: *${userPass}*\n` +
-            `▪️ رابط الإعدادات: ${settingsUrl}\n\n` +
-            `🤖 يمكنك الآن إرسال كلمة *.bot* للحصول على كود ربط لأرقام أخرى.`;
+        // 3. إرسال الرسالة التلقائية المزخرفة المطلوبة
+        const decorMessage = `╭─❀─╮\n✿  fares bot  ✿\n╰─❀─╯\n\n🌸 *جاري تنشيط البوت الخاص بك* 🌸\n⏳ *يستغرق التنشيط 03 دقائق.*\n\n✨ *بعد 03 دقائق،* استخدم الأمر ".alive".\n⚠️ إذا لم يتم تنشيط البوت:\n   ▸ قم بتسجيل الخروج وإعادة الربط.\n\n──────────────────\n──────────────────\n⚙️ *تغيير الإعدادات:*\n➟ لتغيير الإعدادات، استخدم الأمر ".settings".\n   سيتم إرسال رابط الموقع إليك بعد ذلك.\n\n➟ *عند تسجيل الدخول إلى الموقع:*\n   أدخل رمز دولتك ورقم هاتفك بدون الصفر في البداية\n   *(مثال: 947629xxxx)*\n\n➟ لتطبيق الإعدادات الجديدة على البوت:\n   ⏳ *يستغرق الأمر 03 دقائق.*\n   (يرجى التعامل بحذر)\n\n──────────────────\n💖 *شكراً لكم، فريق fares bot...* 💖\n──────────────❀`;
 
-        // إرسال الرسالة إلى الرقم المربوط نفسه (الرسائل المحفوظة)
-        await sock.sendMessage(userJid, { text: successMessage });
+        await sock.sendMessage(userJid, { text: decorMessage });
+
+        // 4. إرسال الرابط والباسورد في رسالة منفصلة
+        const infoMessage = `🔐 *بيانات الدخول لوحة التحكم:*\n\n▪️ كلمة السر: *${userPass}*\n▪️ رابط الإعدادات: ${settingsUrl}`;
+        
+        await sock.sendMessage(userJid, { text: infoMessage });
     }
 
     if (connection === 'close') {
@@ -123,7 +131,6 @@ async function startSocket() {
       if (statusCode !== DisconnectReason.loggedOut) {
         startSocket();
       } else {
-        // حذف الجلسة التالفة والبدء من جديد
         fs.rmSync(AUTH_DIR, { recursive: true, force: true });
         startSocket();
       }
@@ -132,6 +139,18 @@ async function startSocket() {
 
   return sock;
 }
+
+// مسار تسجيل الدخول لصفحة الإعدادات
+app.post('/api/login', (req, res) => {
+    const { number, password } = req.body;
+    let db = JSON.parse(fs.readFileSync(DB_PATH));
+    const user = db[number];
+    if (user && user.password === password) {
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, message: "بيانات الدخول خاطئة" });
+    }
+});
 
 app.get('/api/pairing', async (req, res) => {
   let number = req.query.number?.replace(/\D/g, '');
