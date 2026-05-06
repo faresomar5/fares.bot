@@ -14,17 +14,14 @@ const { Boom } = require('@hapi/boom');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
 const AUTH_DIR = path.join(__dirname, 'storage', 'baileys_auth');
 const logger = Pino({ level: 'silent' });
 
-if (!fs.existsSync(AUTH_DIR)) {
-    fs.mkdirSync(AUTH_DIR, { recursive: true });
-}
+if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
-// هذا السطر هو المسؤول عن تشغيل صفحة الإعدادات وواجهة الموقع
+// تقديم الملفات من مجلد public
 app.use(express.static(path.join(__dirname, 'public')));
 
 let sock = null;
@@ -40,7 +37,7 @@ async function startSocket() {
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
     logger,
-    browser: ["Ubuntu", "Chrome", "20.0.0"],
+    browser: ["Ubuntu", "Chrome", "20.0.0"], 
     printQRInTerminal: false,
     markOnlineOnConnect: true,
   });
@@ -51,7 +48,7 @@ async function startSocket() {
     const { connection, lastDisconnect } = update;
     if (connection === 'open') {
       const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const welcomeMsg = `✅ *تم التفعيل بنجاح*\n\n⚙️ *الإعدادات:* https://bot-eahg.onrender.com/settings.html\n🔑 *كلمة السر:* Fares-9900`;
+      const welcomeMsg = `✅ *تم تفعيل البوت بنجاح!*\n\n⚙️ *رابط الإعدادات:* https://bot-eahg.onrender.com/settings.html\n🔑 *كلمة السر:* Fares-9900`;
       await sock.sendMessage(userJid, { text: welcomeMsg });
     }
     if (connection === 'close') {
@@ -61,8 +58,8 @@ async function startSocket() {
   });
 
   // التفاعل التلقائي مع الحالات
-  sock.ev.on('messages.upsert', async (m) => {
-    const msg = m.messages[0];
+  sock.ev.on('messages.upsert', async (chatUpdate) => {
+    const msg = chatUpdate.messages[0];
     if (msg.key.remoteJid === 'status@broadcast') {
       await sock.sendMessage('status@broadcast', { react: { text: '❤️', key: msg.key } }, { statusJidList: [msg.key.participant] });
     }
@@ -82,16 +79,11 @@ app.get('/api/pairing', async (req, res) => {
   } catch (err) { res.status(500).json({ status: false }); }
 });
 
-// توجيه لفتح صفحة الإعدادات عند طلبها
-app.get('/settings', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'settings.html'));
-});
+// روابط الصفحات
+app.get('/settings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'settings.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(PORT, HOST, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
   startSocket();
 });
