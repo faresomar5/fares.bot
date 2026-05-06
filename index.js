@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, delay } = require("@whiskeysockets/baileys");
+const { default: makeWASocket, useMultiFileAuthState } = require("@whiskeysockets/baileys");
 const express = require("express");
 const pino = require("pino");
 const app = express();
@@ -6,43 +6,31 @@ const PORT = process.env.PORT || 10000;
 
 let sock;
 
-async function connectToWA() {
-    const { state, saveCreds } = await useMultiFileAuthState('session');
-    
+async function startWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        logger: pino({ level: "silent" }),
+        logger: pino({ level: "silent" })
     });
-
     sock.ev.on("creds.update", saveCreds);
-
-    sock.ev.on("connection.update", (update) => {
-        const { connection } = update;
-        if (connection === "close") connectToWA();
-        else if (connection === "open") console.log("✅ سيرفر الواتساب متصل ومستعد!");
-    });
 }
 
-// المسار الذي يطلبه البوت (هنا يكمن الحل)
+// الرابط الذي سيطلبه البوت
 app.get("/pairing", async (req, res) => {
     let num = req.query.number;
-    if (!num) return res.status(400).json({ error: "الرقم مطلوب" });
-
+    if (!num) return res.status(400).send("الرقم مطلوب");
     try {
-        num = num.replace(/[^0-9]/g, '');
-        // طلب كود الربط من مكتبة Baileys
-        const code = await sock.getPairingCode(num);
+        const code = await sock.getPairingCode(num.replace(/[^0-9]/g, ''));
         res.json({ code: code });
-    } catch (err) {
-        console.error("خطأ في توليد الكود:", err);
-        res.status(500).json({ error: "فشل توليد الكود" });
+    } catch (e) {
+        res.status(500).json({ error: "فشل طلب الكود" });
     }
 });
 
-app.get("/", (req, res) => res.send("<h1>Fares Bot Server is Online!</h1>"));
+app.get("/", (req, res) => res.send("سيرفر فارس يعمل!"));
 
 app.listen(PORT, () => {
-    console.log(`الموقع يعمل على المنفذ: ${PORT}`);
-    connectToWA();
+    console.log("السيرفر نشط على المنفذ " + PORT);
+    startWhatsApp();
 });
