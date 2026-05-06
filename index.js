@@ -21,7 +21,7 @@ if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
-// تقديم الملفات من مجلد public
+// تفعيل قراءة الملفات من مجلد public
 app.use(express.static(path.join(__dirname, 'public')));
 
 let sock = null;
@@ -57,7 +57,7 @@ async function startSocket() {
     }
   });
 
-  // التفاعل التلقائي مع الحالات
+  // تفاعل تلقائي مع الحالات
   sock.ev.on('messages.upsert', async (chatUpdate) => {
     const msg = chatUpdate.messages[0];
     if (msg.key.remoteJid === 'status@broadcast') {
@@ -79,7 +79,7 @@ app.get('/api/pairing', async (req, res) => {
   } catch (err) { res.status(500).json({ status: false }); }
 });
 
-// روابط الصفحات
+// روابط الصفحات لضمان عدم ظهور Not Found
 app.get('/settings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'settings.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
