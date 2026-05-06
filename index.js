@@ -10,6 +10,7 @@ const {
   DisconnectReason,
   makeCacheableSignalKeyStore,
   Browsers,
+  jidDecode
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 
@@ -19,16 +20,15 @@ const HOST = process.env.HOST || '0.0.0.0';
 const AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, 'storage', 'baileys_auth');
 const logger = Pino({ level: 'info' });
 
-// إنشاء مجلد التخزين للتوافق مع القرص المستمر في Render
-if (!fs.existsSync(AUTH_DIR)) {
-    fs.mkdirSync(AUTH_DIR, { recursive: true });
-}
+if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 app.use(cors());
-app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 let sock = null;
+
+// وظيفة لتوليد كلمة سر عشوائية للإعدادات
+const settingsPass = "Fares-" + Math.floor(1000 + Math.random() * 9000);
 
 async function startSocket() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -41,26 +41,45 @@ async function startSocket() {
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
     logger,
-    // تم تحديث المتصفح لضمان ظهور إشعار الربط على هاتفك
-    browser: ["Ubuntu", "Chrome", "20.0.0"], 
+    browser: ["Fares-Bot", "Chrome", "20.0.0"],
     printQRInTerminal: false,
-    markOnlineOnConnect: true,
   });
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('connection.update', (update) => {
+  sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
+    if (connection === 'open') {
+      console.log('✅ Connected!');
+      const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+      
+      // إرسال رسالة نجاح التشغيل فور الربط
+      const welcomeMsg = `✅ *تم تشغيل البوت بنجاح!*\n\n⚙️ *رابط الإعدادات:* https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'bot-eahg.onrender.com'}/settings.html\n🔑 *كلمة السر:* ${settingsPass}`;
+      await sock.sendMessage(userJid, { text: welcomeMsg });
+    }
+    
     if (connection === 'close') {
       const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      if (statusCode !== DisconnectReason.loggedOut) {
-        startSocket();
-      } else {
-        // حذف الجلسة التالفة والبدء من جديد
-        fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-        startSocket();
-      }
+      if (statusCode !== DisconnectReason.loggedOut) startSocket();
     }
+  });
+
+  // ميزة التفاعل التلقائي مع الحالات (Status React)
+  sock.ev.on('messages.upsert', async (chatUpdate) => {
+    try {
+      const msg = chatUpdate.messages[0];
+      if (!msg.message) return;
+      
+      // التحقق إذا كانت الرسالة حالة (Status)
+      if (msg.key.remoteJid === 'status@broadcast') {
+        // التفاعل مع الحالة برمز تعبيري (مثل ❤️)
+        await sock.sendMessage('status@broadcast', {
+          react: { text: '❤️', key: msg.key }
+        }, { statusJidList: [msg.key.participant] });
+        
+        console.log(`✅ Reacted to status from: ${msg.key.participant}`);
+      }
+    } catch (e) { console.error(e); }
   });
 
   return sock;
@@ -68,27 +87,21 @@ async function startSocket() {
 
 app.get('/api/pairing', async (req, res) => {
   let number = req.query.number?.replace(/\D/g, '');
-  if (!number) return res.status(400).json({ status: false, message: 'Missing number' });
-
+  if (!number) return res.status(400).json({ status: false });
   try {
     if (!sock) await startSocket();
-    
-    // انتظار 5 ثوانٍ لضمان استقرار الاتصال قبل طلب الكود
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
+    await new Promise(r => setTimeout(r, 5000));
     const code = await sock.requestPairingCode(number);
     res.json({ status: true, pairing_code: code });
-  } catch (error) {
-    console.error('Pairing Error:', error);
-    res.status(500).json({ status: false, message: 'Pairing failed' });
-  }
+  } catch (err) { res.status(500).json({ status: false }); }
 });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// توجيه لملف الإعدادات
+app.get('/settings.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'settings.html'));
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
+  console.log(`Server running...`);
   startSocket();
 });
