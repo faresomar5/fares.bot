@@ -6,81 +6,79 @@
     <title>GOLDEN QUEEN | CONNECT</title>
     <style>
         :root { --gold: #d4a017; --bg: #0b0b10; --card: #16161e; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: var(--card); width: 90%; max-width: 400px; padding: 40px 20px; border-radius: 30px; border: 1px solid rgba(212, 160, 23, 0.3); text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-        
-        /* واجهة اللغات */
-        .lang-btn { width: 100%; padding: 15px; margin: 10px 0; border-radius: 15px; border: 1px solid #333; background: #1a1a24; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
-        .lang-btn:hover { border-color: var(--gold); }
-        
-        /* واجهة الربط */
-        input { width: 100%; padding: 16px; margin: 20px 0; border-radius: 15px; border: 1px solid #333; background: #000; color: #fff; text-align: center; font-size: 18px; box-sizing: border-box; }
-        .btn-gold { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; }
-        #pairing-result { margin-top: 25px; font-size: 28px; color: var(--gold); font-weight: bold; letter-spacing: 5px; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .panel { background: var(--card); width: 90%; max-width: 400px; padding: 40px 20px; border-radius: 30px; border: 1px solid rgba(212,160,23,0.3); text-align: center; box-shadow: 0 15px 45px rgba(0,0,0,0.8); }
+        .logo { font-size: 60px; margin-bottom: 10px; }
+        .lang-btn { width: 100%; padding: 16px; margin: 12px 0; border-radius: 15px; border: 1px solid #333; background: #1a1a24; color: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 16px; transition: 0.3s; }
+        .lang-btn:hover { border-color: var(--gold); background: #222; }
+        input { width: 100%; padding: 18px; margin: 20px 0; border-radius: 15px; border: 1px solid #333; background: #000; color: #fff; text-align: center; font-size: 22px; box-sizing: border-box; }
+        .btn-main { width: 100%; padding: 18px; background: var(--gold); border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; font-size: 18px; }
+        #pairing-display { margin-top: 25px; font-size: 32px; color: var(--gold); font-weight: bold; letter-spacing: 5px; }
         .hidden { display: none; }
-        .logo { font-size: 50px; margin-bottom: 10px; }
+        .pass-hint { margin-top: 15px; color: #2ecc71; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="container" id="step-1">
+    <div class="panel" id="step1">
         <div class="logo">👑</div>
         <h2 style="color: var(--gold);">إختر اللغة</h2>
-        <p style="color: #888; font-size: 12px; margin-bottom: 30px;">CHOOSE YOUR LANGUAGE</p>
+        <p style="color: #666; font-size: 12px; margin-bottom: 20px;">CHOOSE YOUR LANGUAGE</p>
         
-        <button class="lang-btn" onclick="goToStep2('ar')"><span>العربية</span> <span>🇾🇪</span></button>
-        <button class="lang-btn" onclick="goToStep2('en')"><span>English</span> <span>🇺🇸</span></button>
-        <button class="lang-btn" onclick="goToStep2('pt')"><span>Português</span> <span>🇧🇷</span></button>
+        <button class="lang-btn" onclick="next('ar')"><span>العربية</span> <span>🇾🇪</span></button>
+        <button class="lang-btn" onclick="next('en')"><span>English</span> <span>🇺🇸</span></button>
+        <button class="lang-btn" onclick="next('pt')"><span>Português</span> <span>🇧🇷</span></button>
     </div>
 
-    <div class="container hidden" id="step-2">
+    <div class="panel hidden" id="step2">
         <div class="logo">👑</div>
         <h1 id="title">ربط الرقم</h1>
-        <p id="subtitle" style="color: #888; font-size: 12px;">أدخل رقمك مع رمز الدولة</p>
+        <p id="subtitle" style="color: #888; font-size: 12px;">أدخل رقمك مع رمز الدولة بدون (+)</p>
         
-        <input type="text" id="phone" placeholder="967XXXXXXXXX">
-        <button class="btn-gold" id="action-btn" onclick="getPairingCode()">احصل على الكود</button>
+        <input type="text" id="phone" placeholder="967773987296">
+        <button class="btn-main" id="getBtn" onclick="getCode()">احصل على الكود</button>
         
-        <div id="pairing-result"></div>
-        <p id="pass-hint" style="margin-top: 15px; font-size: 13px; color: #2ecc71;"></p>
+        <div id="pairing-display"></div>
+        <div id="pass-display" class="pass-hint"></div>
     </div>
 
     <script>
-        let selectedLang = 'ar';
-
-        function goToStep2(lang) {
-            selectedLang = lang;
-            document.getElementById('step-1').classList.add('hidden');
-            document.getElementById('step-2').classList.remove('hidden');
-            
-            // تغيير النصوص بناءً على اللغة
+        function next(lang) {
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
             if(lang === 'en') {
-                document.getElementById('title').innerText = "Pair Your Device";
+                document.getElementById('title').innerText = "Link Device";
                 document.getElementById('subtitle').innerText = "Enter number with country code";
-                document.getElementById('action-btn').innerText = "GET CODE";
+                document.getElementById('getBtn').innerText = "GET CODE";
             }
         }
 
-        async function getPairingCode() {
+        async function getCode() {
             const num = document.getElementById('phone').value;
-            const resDiv = document.getElementById('pairing-result');
-            const hint = document.getElementById('pass-hint');
+            const resBox = document.getElementById('pairing-display');
+            const passBox = document.getElementById('pass-display');
+            const btn = document.getElementById('getBtn');
 
-            if(!num) return alert("الرقم مطلوب!");
+            if(!num) return alert("Please enter your number");
 
-            resDiv.innerText = "⏳...";
+            resBox.innerText = "⏳...";
+            btn.disabled = true;
+
             try {
-                const response = await fetch(`/get-code?number=${num}`);
+                const response = await fetch(`/get-pairing?number=${num}`);
                 const data = await response.json();
 
                 if(data.code) {
-                    resDiv.innerText = data.code;
-                    hint.innerText = `🔐 كلمة سر لوحة التحكم: ${data.pass}`;
+                    resBox.innerText = data.code;
+                    passBox.innerText = "🔐 كلمة سر الموقع: " + data.pass;
                 } else {
-                    resDiv.innerText = "Error!";
+                    resBox.innerText = "Error!";
+                    resBox.style.color = "red";
                 }
-            } catch(e) {
-                resDiv.innerText = "Error!";
+            } catch (e) {
+                resBox.innerText = "Server Error!";
+            } finally {
+                btn.disabled = false;
             }
         }
     </script>
