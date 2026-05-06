@@ -3,69 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Golden Queen Dashboard - Fares</title>
+    <title>GOLDEN QUEEN | لوحة التحكم</title>
     <style>
-        :root { --gold-grad: linear-gradient(135deg, #d4a017 0%, #f9d976 100%); --bg: #0b0b10; --card: rgba(22, 22, 30, 0.95); }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow-x: hidden; }
-        .glass-panel { background: var(--card); width: 90%; max-width: 450px; padding: 30px; border-radius: 25px; border: 1px solid rgba(212, 160, 23, 0.3); box-shadow: 0 15px 35px rgba(0,0,0,0.7); backdrop-filter: blur(10px); text-align: center; }
-        .logo-area { margin-bottom: 25px; }
-        .logo-area img { width: 80px; border-radius: 50%; border: 2px solid #d4a017; padding: 5px; }
-        h1 { font-size: 24px; letter-spacing: 2px; margin: 10px 0; background: var(--gold-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .input-group { position: relative; margin-bottom: 15px; }
-        .input-group input { width: 100%; padding: 15px 45px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 12px; color: white; box-sizing: border-box; font-size: 16px; }
-        .btn-login { width: 100%; padding: 16px; background: var(--gold-grad); border: none; border-radius: 12px; color: #000; font-weight: bold; cursor: pointer; font-size: 17px; box-shadow: 0 5px 15px rgba(212, 160, 23, 0.4); }
-        .settings-area { display: none; text-align: right; }
-        .setting-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; }
-        .emoji-input { width: 60px; background: #000; border: 1px solid #d4a017; color: white; text-align: center; padding: 5px; border-radius: 5px; }
+        :root { --gold: #d4a017; --bg: #0b0b10; --card: rgba(22, 22, 30, 0.95); }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .panel { background: var(--card); width: 90%; max-width: 450px; padding: 35px; border-radius: 30px; border: 1px solid rgba(212,160,23,0.3); backdrop-filter: blur(10px); text-align: center; }
+        .logo-box { width: 70px; height: 70px; background: #1a1a24; border-radius: 50%; border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 30px; }
+        h1 { font-size: 24px; color: #fff; margin: 0; letter-spacing: 1px; }
+        .subtitle { color: #888; font-size: 11px; text-transform: uppercase; margin-bottom: 30px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 16px; margin: 10px 0; border-radius: 15px; border: 1px solid #333; background: rgba(0,0,0,0.5); color: #fff; text-align: center; box-sizing: border-box; }
+        .btn-gold { width: 100%; padding: 16px; background: linear-gradient(45deg, #d4a017, #f9d976); border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 15px; }
+        .remember-me { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; color: #aaa; margin: 15px 0; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #222; text-align: right; }
+        #settings-ui { display: none; }
+        .switch { position: relative; display: inline-block; width: 45px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(23px); }
     </style>
 </head>
 <body>
 
-    <div class="glass-panel">
-        <div id="login-section">
-            <div class="logo-area">
-                <img src="https://i.ibb.co/L6S0GzZ/fares.jpg" alt="Logo">
-                <h1>GOLDEN QUEEN</h1>
-                <p style="color: #888; font-size: 12px;">CONTACT SAVE ADMIN 🔐</p>
-            </div>
-            <div class="input-group">
-                <input type="text" id="phone" placeholder="رقم المالك 📞">
-            </div>
-            <div class="input-group">
-                <input type="password" id="pass" placeholder="كلمة المرور 🔑">
-            </div>
-            <p style="font-size: 11px; color: #666;">💡 نسيت كلمة المرور؟ أرسل .settings في محادثة المالك</p>
-            <button class="btn-login" onclick="attemptLogin()">تسجيل الدخول</button>
+    <div class="panel" id="login-ui">
+        <div class="logo-box">👑</div>
+        <h1>دخول المشرف</h1>
+        <p class="subtitle">Contact Save Administration</p>
+        
+        <input type="text" id="phone" placeholder="رقم المالك (مثال: 967...)">
+        <input type="password" id="pass" placeholder="كلمة المرور 🔐">
+        
+        <div class="remember-me">
+            <input type="checkbox" id="remember">
+            <label for="remember">تذكير الرقم وكلمة السر</label>
         </div>
 
-        <div id="settings-section" class="settings-area">
-            <h2 style="color: #d4a017;">إعداداتك الخاصة</h2>
-            <div class="setting-row">
-                <span>تغيير إيموجي التفاعل</span>
-                <input type="text" id="emojiVal" class="emoji-input" placeholder="❤️">
-            </div>
-            <div class="setting-row">
-                <span>منع المكالمات</span>
-                <input type="checkbox" checked>
-            </div>
-            <div class="setting-row">
-                <span>الوضع العام</span>
-                <input type="checkbox" checked>
-            </div>
-            <button class="btn-login" style="margin-top: 20px;" onclick="saveSettings()">حفظ التعديلات</button>
+        <button class="btn-gold" onclick="login()">تسجيل الدخول</button>
+    </div>
+
+    <div class="panel" id="settings-ui">
+        <h1>إعدادات السيرفر ⚙️</h1>
+        <p class="subtitle">تحكم في خيارات البوت</p>
+
+        <div class="setting-row">
+            <span>إيموجي التفاعل</span>
+            <input type="text" id="emoji" style="width: 50px; padding: 5px; margin: 0;" value="❤️">
         </div>
+
+        <div class="setting-row">
+            <span>قراءة الحالات (Auto-Read)</span>
+            <label class="switch"><input type="checkbox" id="autoRead" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="setting-row">
+            <span>منع المكالمات (Anti-Call)</span>
+            <label class="switch"><input type="checkbox" id="antiCall" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="setting-row">
+            <span>متصل دائماً (Always Online)</span>
+            <label class="switch"><input type="checkbox" id="alwaysOnline" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="setting-row">
+            <span>منع الحذف (Anti-Delete)</span>
+            <label class="switch"><input type="checkbox" id="antiDelete" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="setting-row">
+            <span>الوضع العام (Public)</span>
+            <label class="switch"><input type="checkbox" id="publicMode" checked><span class="slider"></span></label>
+        </div>
+
+        <button class="btn-gold" onclick="save()">حفظ الإعدادات</button>
     </div>
 
     <script>
-        function attemptLogin() {
-            // سيتم هنا التحقق من السيرفر، حالياً تجريبي:
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('settings-section').style.display = 'block';
+        window.onload = () => {
+            if(localStorage.getItem('phone')) {
+                document.getElementById('phone').value = localStorage.getItem('phone');
+                document.getElementById('pass').value = localStorage.getItem('pass');
+                document.getElementById('remember').checked = true;
+            }
+        };
+
+        async function login() {
+            const phone = document.getElementById('phone').value;
+            const pass = document.getElementById('pass').value;
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: phone, password: pass })
+            });
+            const data = await res.json();
+            if(data.success) {
+                if(document.getElementById('remember').checked) {
+                    localStorage.setItem('phone', phone);
+                    localStorage.setItem('pass', pass);
+                }
+                document.getElementById('login-ui').style.display = 'none';
+                document.getElementById('settings-ui').style.display = 'block';
+            } else { alert(data.message); }
         }
-        function saveSettings() {
-            const emoji = document.getElementById('emojiVal').value;
-            alert('تم حفظ الإيموجي الجديد: ' + emoji);
-        }
+
+        function save() { alert("تم حفظ الإعدادات بنجاح ✅"); }
     </script>
 </body>
 </html>
