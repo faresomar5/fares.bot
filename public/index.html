@@ -3,52 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ربط بوت فارس</title>
+    <title>GOLDEN QUEEN | CONNECT</title>
     <style>
-        body { background: #16161e; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #1c1c27; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input { width: 100%; padding: 15px; margin: 20px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: #fff; text-align: center; font-size: 18px; }
-        button { width: 100%; padding: 15px; background: #2ecc71; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
-        #result { margin-top: 20px; font-size: 24px; font-weight: bold; color: #f1c40f; letter-spacing: 5px; }
-        .error { color: #e74c3c !important; }
+        :root { --gold: #d4a017; --bg: #0b0b10; --card: #16161e; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: var(--card); width: 90%; max-width: 400px; padding: 40px 20px; border-radius: 30px; border: 1px solid rgba(212, 160, 23, 0.3); text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        
+        /* واجهة اللغات */
+        .lang-btn { width: 100%; padding: 15px; margin: 10px 0; border-radius: 15px; border: 1px solid #333; background: #1a1a24; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
+        .lang-btn:hover { border-color: var(--gold); }
+        
+        /* واجهة الربط */
+        input { width: 100%; padding: 16px; margin: 20px 0; border-radius: 15px; border: 1px solid #333; background: #000; color: #fff; text-align: center; font-size: 18px; box-sizing: border-box; }
+        .btn-gold { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 15px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; }
+        #pairing-result { margin-top: 25px; font-size: 28px; color: var(--gold); font-weight: bold; letter-spacing: 5px; }
+        .hidden { display: none; }
+        .logo { font-size: 50px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>ربط الرقم</h2>
-        <p>أدخل الرقم بالصيغة الدولية (بدون +)</p>
-        <input type="text" id="number" placeholder="مثال: 967773987296">
-        <button id="btn" onclick="getPairingCode()">احصل على الكود</button>
-        <div id="result"></div>
+
+    <div class="container" id="step-1">
+        <div class="logo">👑</div>
+        <h2 style="color: var(--gold);">إختر اللغة</h2>
+        <p style="color: #888; font-size: 12px; margin-bottom: 30px;">CHOOSE YOUR LANGUAGE</p>
+        
+        <button class="lang-btn" onclick="goToStep2('ar')"><span>العربية</span> <span>🇾🇪</span></button>
+        <button class="lang-btn" onclick="goToStep2('en')"><span>English</span> <span>🇺🇸</span></button>
+        <button class="lang-btn" onclick="goToStep2('pt')"><span>Português</span> <span>🇧🇷</span></button>
+    </div>
+
+    <div class="container hidden" id="step-2">
+        <div class="logo">👑</div>
+        <h1 id="title">ربط الرقم</h1>
+        <p id="subtitle" style="color: #888; font-size: 12px;">أدخل رقمك مع رمز الدولة</p>
+        
+        <input type="text" id="phone" placeholder="967XXXXXXXXX">
+        <button class="btn-gold" id="action-btn" onclick="getPairingCode()">احصل على الكود</button>
+        
+        <div id="pairing-result"></div>
+        <p id="pass-hint" style="margin-top: 15px; font-size: 13px; color: #2ecc71;"></p>
     </div>
 
     <script>
+        let selectedLang = 'ar';
+
+        function goToStep2(lang) {
+            selectedLang = lang;
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.remove('hidden');
+            
+            // تغيير النصوص بناءً على اللغة
+            if(lang === 'en') {
+                document.getElementById('title').innerText = "Pair Your Device";
+                document.getElementById('subtitle').innerText = "Enter number with country code";
+                document.getElementById('action-btn').innerText = "GET CODE";
+            }
+        }
+
         async function getPairingCode() {
-            const num = document.getElementById('number').value;
-            const resDiv = document.getElementById('result');
-            const btn = document.getElementById('btn');
+            const num = document.getElementById('phone').value;
+            const resDiv = document.getElementById('pairing-result');
+            const hint = document.getElementById('pass-hint');
 
-            if (!num) return alert("يرجى إدخال الرقم");
+            if(!num) return alert("الرقم مطلوب!");
 
-            resDiv.innerHTML = "جاري الطلب... ⏳";
-            resDiv.className = "";
-            btn.disabled = true;
-
+            resDiv.innerText = "⏳...";
             try {
-                const response = await fetch(`/pairing-code?number=${num}`);
+                const response = await fetch(`/get-code?number=${num}`);
                 const data = await response.json();
 
-                if (data.code) {
-                    resDiv.innerHTML = data.code; // عرض الكود (8 رموز)
+                if(data.code) {
+                    resDiv.innerText = data.code;
+                    hint.innerText = `🔐 كلمة سر لوحة التحكم: ${data.pass}`;
                 } else {
-                    resDiv.innerHTML = data.error || "خطأ!";
-                    resDiv.className = "error";
+                    resDiv.innerText = "Error!";
                 }
-            } catch (e) {
-                resDiv.innerHTML = "فشل الاتصال بالسيرفر";
-                resDiv.className = "error";
-            } finally {
-                btn.disabled = false;
+            } catch(e) {
+                resDiv.innerText = "Error!";
             }
         }
     </script>
