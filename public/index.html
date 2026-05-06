@@ -1,60 +1,56 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fares Bot - Pairing</title>
-  <style>
-    :root { --bg: #0d0d12; --accent: #25d366; --text: #f9fafb; --card: #1f2937; }
-    body { font-family: sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .card { background: var(--card); padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-    #pairing-section { display: none; }
-    .btn { background: var(--accent); color: #000; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #111; color: #fff; margin: 10px 0; text-align: center; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ربط بوت فارس</title>
+    <style>
+        body { background: #16161e; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #1c1c27; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 15px; margin: 20px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: #fff; text-align: center; font-size: 18px; }
+        button { width: 100%; padding: 15px; background: #2ecc71; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
+        #result { margin-top: 20px; font-size: 24px; font-weight: bold; color: #f1c40f; letter-spacing: 5px; }
+        .error { color: #e74c3c !important; }
+    </style>
 </head>
 <body>
-  <div class="card">
-    <div id="lang-section">
-      <h2 id="welcome-txt">مرحباً بك في Fares Bot</h2>
-      <p>Select Language / اختر اللغة</p>
-      <button class="btn" onclick="showPairing('ar')">العربية</button>
-      <button class="btn" onclick="showPairing('en')" style="background:#444; color:#fff">English</button>
+    <div class="card">
+        <h2>ربط الرقم</h2>
+        <p>أدخل الرقم بالصيغة الدولية (بدون +)</p>
+        <input type="text" id="number" placeholder="مثال: 967773987296">
+        <button id="btn" onclick="getPairingCode()">احصل على الكود</button>
+        <div id="result"></div>
     </div>
 
-    <div id="pairing-section">
-      <h2 id="title">ربط الرقم</h2>
-      <p id="desc">أدخل الرقم بالصيغة الدولية</p>
-      <input type="text" id="phone" placeholder="9677xxxxxxx">
-      <button class="btn" id="pairBtn" onclick="getCode()">احصل على الكود</button>
-      <div id="result" style="margin-top:20px; font-size:24px; color:var(--accent); font-weight:bold"></div>
-    </div>
-  </div>
+    <script>
+        async function getPairingCode() {
+            const num = document.getElementById('number').value;
+            const resDiv = document.getElementById('result');
+            const btn = document.getElementById('btn');
 
-  <script>
-    let currentLang = 'ar';
-    function showPairing(lang) {
-      currentLang = lang;
-      document.getElementById('lang-section').style.display = 'none';
-      document.getElementById('pairing-section').style.display = 'block';
-      if(lang === 'en') {
-        document.getElementById('title').innerText = "Link Number";
-        document.getElementById('desc').innerText = "Enter number with country code";
-        document.getElementById('pairBtn').innerText = "Get Pairing Code";
-      }
-    }
+            if (!num) return alert("يرجى إدخال الرقم");
 
-    async function getCode() {
-      const num = document.getElementById('phone').value.replace(/\D/g,'');
-      const resDiv = document.getElementById('result');
-      resDiv.innerText = "...";
-      try {
-        const response = await fetch(`/api/pairing?number=${num}`);
-        const data = await response.json();
-        if(data.status) resDiv.innerText = data.pairing_code;
-        else resDiv.innerText = "Error!";
-      } catch(e) { resDiv.innerText = "Error!"; }
-    }
-  </script>
+            resDiv.innerHTML = "جاري الطلب... ⏳";
+            resDiv.className = "";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/pairing-code?number=${num}`);
+                const data = await response.json();
+
+                if (data.code) {
+                    resDiv.innerHTML = data.code; // عرض الكود (8 رموز)
+                } else {
+                    resDiv.innerHTML = data.error || "خطأ!";
+                    resDiv.className = "error";
+                }
+            } catch (e) {
+                resDiv.innerHTML = "فشل الاتصال بالسيرفر";
+                resDiv.className = "error";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
