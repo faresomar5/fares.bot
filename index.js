@@ -1,49 +1,68 @@
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    delay, 
+    DisconnectReason 
+} = require("@whiskeysockets/baileys");
+const pino = require('pino');
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 10000;
 
+// إعداد السيرفر لعرض واجهة التحكم
 app.use(express.static('public'));
-app.use(express.json());
-
-// قاعدة بيانات بسيطة لحفظ إعدادات كل رقم (يفضل استخدام MongoDB لاحقاً)
-const DB_PATH = './users_db.json';
-if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, JSON.stringify({}));
-
-// ميزة استخراج كود الربط والرد التلقائي
-sock.ev.on('messages.upsert', async (chatUpdate) => {
-    const msg = chatUpdate.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-
-    const remoteJid = msg.key.remoteJid;
-    const senderNumber = remoteJid.split('@')[0];
-    const body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-
-    if (body.trim() === ".bot") {
-        let db = JSON.parse(fs.readFileSync(DB_PATH));
-        
-        // إنشاء كلمة سر فريدة إذا لم تكن موجودة
-        if (!db[senderNumber]) {
-            db[senderNumber] = {
-                password: Math.random().toString(36).slice(-6).toUpperCase(), // كلمة سر من 6 رموز
-                settings: { emoji: "❤️", antiLink: false, antiCall: true }
-            };
-            fs.writeFileSync(DB_PATH, JSON.stringify(db));
-        }
-
-        const userPass = db[senderNumber].password;
-        const pairingCode = await sock.requestPairingCode(senderNumber);
-
-        const welcomeMsg = `👋 *مرحباً بك في بوت فارس*\n\n` +
-            `🔢 كود الربط: *${pairingCode}*\n` +
-            `🔐 كلمة مرور لوحة التحكم: *${userPass}*\n` +
-            `🔗 رابط الإعدادات الخاص بك:\n` +
-            `https://fares-bot-eahg.onrender.com/settings.html?num=${senderNumber}\n\n` +
-            `⚠️ لا تشارك كلمة السر مع أحد.`;
-
-        await sock.sendMessage(remoteJid, { text: welcomeMsg });
-    }
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '/public/index.html'));
 });
 
-app.listen(port, () => console.log(`Server is running on port ${port}`));
+async function startFaresBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+
+    // تعريف المتغير sock في نطاق الدالة
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true,
+        logger: pino({ level: 'silent' }),
+        browser: ["Fares Bot", "Chrome", "1.0.0"]
+    });
+
+    // الاستماع للرسائل (يجب أن يكون داخل الدالة ليرى متغير sock)
+    sock.ev.on('messages.upsert', async (chatUpdate) => {
+        try {
+            const msg = chatUpdate.messages[0];
+            if (!msg.message || msg.key.fromMe) return;
+
+            const remoteJid = msg.key.remoteJid;
+            const body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+
+            // أمر كود الربط
+            if (body.trim() === ".bot") {
+                const senderNumber = remoteJid.split('@')[0];
+                // طلب كود الربط من Baileys
+                const code = await sock.requestPairingCode(senderNumber);
+                await sock.sendMessage(remoteJid, { 
+                    text: `*لوحة تحكم فارس* 🔐\n\nكود الربط الخاص بك هو: *${code}*` 
+                });
+            }
+        } catch (err) {
+            console.log("Error in messages.upsert:", err);
+        }
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startFaresBot();
+        } else if (connection === 'open') {
+            console.log('✅ تم تشغيل بوت فارس بنجاح');
+        }
+    });
+}
+
+// تشغيل البوت والسيرفر
+startFaresBot();
+app.listen(port, () => console.log(`Server running on port ${port}`));
