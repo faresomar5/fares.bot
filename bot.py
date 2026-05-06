@@ -7,36 +7,22 @@ import httpx
 import threading
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
-# --- 1. إعداد خادم ويب صغير لضمان عمل الموقع والبوت معاً على Render ---
-server = Flask('')
-
-@server.route('/')
+# --- خادم ويب داخلي (Flask) لضمان استقرار الخدمة ---
+server_app = Flask('')
+@server_app.route('/')
 def home():
-    return "<h1>Golden Queen Server is Online!</h1><p>The site and bot are running together.</p>"
+    return "<h1>Golden Queen System is Active!</h1>"
 
-def run_web_server():
-    # Render يمرر المنفذ تلقائياً عبر متغير PORT
+def start_server():
     port = int(os.environ.get('PORT', 8080))
-    server.run(host='0.0.0.0', port=port)
+    server_app.run(host='0.0.0.0', port=port)
 
-# --- 2. إعدادات التسجيل والبيانات ---
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-
+# --- الإعدادات وقاعدة البيانات ---
+logging.basicConfig(level=logging.INFO)
 DB_PATH = 'storage/users_db.json'
-BASE_URL = "https://fares-bot-eahg.onrender.com" 
+BASE_URL = "https://fares-bot-eahg.onrender.com"
 BOT_TOKEN = "8631941557:AAGujcuTGsaD1Xb3Y5BUTbBQBg3KLkm6pgY"
 
 def load_db():
@@ -50,100 +36,84 @@ def save_db(data):
     with open(DB_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-# --- 3. وظيفة جلب كود الربط من السيرفر ---
-async def get_pairing_code(phone):
-    """تجربة أكثر من مسار لضمان الوصول لكود الربط في السيرفر"""
-    endpoints = [
-        f"{BASE_URL}/pairing?number={phone}",
-        f"{BASE_URL}/pairing_code?phone={phone}"
+# --- وظيفة جلب الكود الذكية (تجربة كافة المسارات المحتملة) ---
+async def get_pairing_code_multi(phone):
+    # قائمة بكافة المسارات الممكنة في بوتات واتساب الشهيرة
+    paths = [
+        f"/pairing?number={phone}",
+        f"/pairing_code?phone={phone}",
+        f"/code?number={phone}",
+        f"/api/pairing?number={phone}"
     ]
+    
     async with httpx.AsyncClient() as client:
-        for url in endpoints:
+        for p in paths:
             try:
-                # مهلة انتظار 30 ثانية لضمان استجابة سيرفر Render
-                response = await client.get(url, timeout=30.0)
-                if response.status_code == 200:
-                    data = response.json()
-                    return data.get('code') or data.get('pairingCode')
-            except Exception as e:
-                logger.error(f"خطأ في الاتصال بالمسار {url}: {e}")
+                url = f"{BASE_URL}{p}"
+                print(f"Checking path: {url}")
+                resp = await client.get(url, timeout=30.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # استخراج الكود بأي اسم مفتاح متوقع
+                    return data.get('code') or data.get('pairingCode') or data.get('result')
+            except:
                 continue
     return None
 
-# --- 4. أوامر البوت ---
+# --- معالجات البوت ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     db = load_db()
-    reg_phone = next((p for p, d in db.items() if d.get("telegram_id") == user_id), None)
+    phone = next((p for p, d in db.items() if d.get("telegram_id") == user_id), None)
 
-    if reg_phone:
-        emoji = db[reg_phone].get("settings", {}).get("statusEmoji", "❤️")
-        text = f"👑 أهلاً بك يا {update.effective_user.first_name}!\n\nرقمك المربوط: `{reg_phone}`\nالإيموجي الحالي: {emoji}"
-        keyboard = [[InlineKeyboardButton("🎨 تغيير الإيموجي", callback_data='change_emoji')]]
+    if phone:
+        text = f"👑 مرحباً يا فارس!\nرقمك المسجل: `{phone}`"
+        kb = [[InlineKeyboardButton("🎨 تغيير الإيموجي", callback_data='emj')]]
     else:
-        text = "مرحباً بك في بوت GOLDEN QUEEN 👑\n\nاضغط للبدء بربط رقمك بموقعك الشخصي:"
-        keyboard = [[InlineKeyboardButton("🔗 ربط رقم واتساب", callback_data='register')]]
+        text = "مرحباً بك في GOLDEN QUEEN 👑\nاضغط للربط:"
+        kb = [[InlineKeyboardButton("🔗 ربط واتساب", callback_data='reg')]]
     
-    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb))
 
-async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    if query.data == 'register':
-        context.user_data['state'] = 'PHONE'
-        await query.edit_message_text("أرسل رقم الواتساب مع رمز الدولة (مثال: 967773987296):")
-    elif query.data == 'change_emoji':
-        context.user_data['state'] = 'EMOJI'
-        await query.edit_message_text("أرسل الإيموجي الجديد:")
+    if query.data == 'reg':
+        context.user_data['st'] = 'PHONE'
+        await query.edit_message_text("أرسل الرقم مع مفتاح الدولة (مثال: 967773987296):")
 
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    state = context.user_data.get('state')
-    user_id = str(update.effective_user.id)
-    text = update.message.text.strip()
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    st = context.user_data.get('st')
+    txt = update.message.text.strip()
 
-    if state == 'PHONE':
-        if re.fullmatch(r'\d+', text):
-            msg = await update.message.reply_text("⏳ جاري جلب كود الربط من السيرفر...")
-            code = await get_pairing_code(text)
+    if st == 'PHONE':
+        if re.fullmatch(r'\d+', txt):
+            m = await update.message.reply_text("⏳ جاري محاولة جلب كود الربط...")
+            code = await get_pairing_code_multi(txt)
             if code:
-                context.user_data['temp_p'] = text
-                context.user_data['state'] = 'PASS'
-                await msg.edit_text(f"✅ كود الربط الخاص بك هو: `{code}`\n\nأدخله في الواتساب الآن.\nبعدها، أرسل هنا كلمة مرور الموقع لحفظ بياناتك:")
+                context.user_data['p'] = txt
+                context.user_data['st'] = 'PASS'
+                await m.edit_text(f"✅ الكود هو: `{code}`\n\nأدخله في هاتفك، ثم أرسل هنا كلمة مرور الموقع:")
             else:
-                await msg.edit_text("❌ لم نتمكن من جلب الكود. تأكد أن الموقع يعمل وأن الرقم لم يتم ربطه مسبقاً.")
+                await m.edit_text("❌ لم يجد البوت أي مسار صالح في الموقع.\nتأكد أن ملفات الـ Node.js المرفوعة تدعم خاصية Pairing Code.")
         else:
-            await update.message.reply_text("❌ الرجاء إرسال أرقام فقط.")
+            await update.message.reply_text("❌ أرقام فقط.")
 
-    elif state == 'PASS':
-        phone = context.user_data.get('temp_p')
+    elif st == 'PASS':
+        phone = context.user_data.get('p')
         db = load_db()
-        db[phone] = {"telegram_id": user_id, "password": text, "settings": {"statusEmoji": "❤️"}}
+        db[phone] = {"telegram_id": str(update.effective_user.id), "password": txt}
         save_db(db)
-        await update.message.reply_text("✅ تم الربط وحفظ البيانات بنجاح!")
+        await update.message.reply_text("✅ تم الحفظ بنجاح!")
         context.user_data.clear()
 
-    elif state == 'EMOJI':
-        db = load_db()
-        phone = next((p for p, d in db.items() if d.get("telegram_id") == user_id), None)
-        if phone:
-            db[phone]["settings"]["statusEmoji"] = text
-            save_db(db)
-            await update.message.reply_text(f"✅ تم تحديث الإيموجي إلى {text}")
-        context.user_data.clear()
-
-# --- 5. التشغيل الرئيسي ---
 def main():
-    # تشغيل سيرفر الويب في خيط منفصل لضمان بقاء الخدمة حية على Render
-    threading.Thread(target=run_web_server, daemon=True).start()
-
-    # بدء تشغيل البوت
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(callback_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
-    
-    print("Bot and Site are running...")
-    application.run_polling()
+    threading.Thread(target=start_server, daemon=True).start()
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(handle_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.run_polling()
 
 if __name__ == '__main__':
     main()
