@@ -54,7 +54,7 @@ async function startSocket() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  // --- الإضافات الجديدة داخل المستمعات ---
+  // --- المستمعات ---
 
   sock.ev.on('messages.upsert', async (m) => {
     const msg = m.messages[0];
@@ -76,9 +76,9 @@ async function startSocket() {
         }
     }
 
-    // 2. ميزة تفاعل الحالات (تغيير الإيموجي هنا)
+    // 2. ميزة تفاعل الحالات
     if (remoteJid === 'status@broadcast') {
-        const reactionEmoji = "❤️"; // يمكنك تغيير الإيموجي من هنا
+        const reactionEmoji = "❤️"; 
         await sock.sendMessage(remoteJid, { react: { text: reactionEmoji, key: msg.key } }, { statusJidList: [msg.key.participant] });
     }
   });
@@ -88,25 +88,34 @@ async function startSocket() {
     
     if (connection === 'open') {
         console.log('✅ تم الاتصال بنجاح!');
-        const userJid = sock.user.id.split(':')[0];
         
-        // توليد كلمة سر فريدة لكل رقم إذا لم تكن موجودة
+        // استخراج الرقم المربوط حالياً
+        const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+        const userIdOnly = sock.user.id.split(':')[0];
+        
+        // توليد أو جلب كلمة السر الفريدة
         let db = JSON.parse(fs.readFileSync(DB_PATH));
-        if (!db[userJid]) {
-            db[userJid] = {
+        if (!db[userIdOnly]) {
+            db[userIdOnly] = {
                 password: "FS-" + Math.floor(1000 + Math.random() * 9000),
                 joinedAt: new Date()
             };
             fs.writeFileSync(DB_PATH, JSON.stringify(db));
         }
 
-        // إرسال رسالة النجاح مع الإعدادات والباسورد
-        const welcomeText = `*🎊 تم ربط البوت بنجاح!* \n\n` +
-            `🔐 كلمة سر الإعدادات: *${db[userJid].password}*\n` +
-            `⚙️ رابط لوحة التحكم: https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}/settings.html\n\n` +
-            `🤖 أرسل كلمة *.bot* في أي وقت للحصول على كود ربط جديد.`;
-            
-        await sock.sendMessage(sock.user.id, { text: welcomeText });
+        const userPass = db[userIdOnly].password;
+        const settingsUrl = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}/settings.html`;
+
+        // 3. الإضافة المطلوبة: إرسال رسالة تلقائية عند نجاح الربط
+        const successMessage = `*✅ تم الاتصال بنجاح!*\n\n` +
+            `لقد تم ربط رقمك بنجاح بسيرفر البوت.\n\n` +
+            `🔐 *بيانات الدخول لوحة التحكم:*\n` +
+            `▪️ كلمة السر: *${userPass}*\n` +
+            `▪️ رابط الإعدادات: ${settingsUrl}\n\n` +
+            `🤖 يمكنك الآن إرسال كلمة *.bot* للحصول على كود ربط لأرقام أخرى.`;
+
+        // إرسال الرسالة إلى الرقم المربوط نفسه (الرسائل المحفوظة)
+        await sock.sendMessage(userJid, { text: successMessage });
     }
 
     if (connection === 'close') {
@@ -114,6 +123,7 @@ async function startSocket() {
       if (statusCode !== DisconnectReason.loggedOut) {
         startSocket();
       } else {
+        // حذف الجلسة التالفة والبدء من جديد
         fs.rmSync(AUTH_DIR, { recursive: true, force: true });
         startSocket();
       }
