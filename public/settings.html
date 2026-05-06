@@ -2,33 +2,79 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>إعدادات بوت فارس</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعدادات سيرفر فارس</title>
     <style>
-        :root { --gold: #d4a017; --bg: #0d0d12; --card: #16161e; }
-        body { background: var(--bg); color: white; font-family: sans-serif; direction: rtl; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .box { background: var(--card); padding: 30px; border-radius: 15px; border: 1px solid var(--gold); width: 90%; max-width: 400px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; background: var(--gold); border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        :root { --bg: #0d0d12; --card: #16161e; --gold: #d4a017; --text: #f0eaf5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); direction: rtl; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .container { background: var(--card); width: 95%; max-width: 500px; padding: 25px; border-radius: 20px; border: 1px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #login-screen { text-align: center; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: #fff; text-align: center; box-sizing: border-box; }
+        .btn-main { width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #settings-screen { display: none; text-align: left; direction: ltr; font-family: monospace; font-size: 13px; max-height: 80vh; overflow-y: auto; padding: 10px; background: #0a0a0f; border-radius: 10px; }
+        .val-on { color: #2ecc71; }
+        .val-off { color: #e74c3c; }
+        .val-set { color: #3498db; }
+        pre { white-space: pre-wrap; word-wrap: break-word; color: #f0eaf5; margin: 0; }
     </style>
 </head>
 <body>
-    <div class="box" id="login">
-        <h2>تسجيل الدخول</h2>
-        <input type="text" id="num" placeholder="الرقم المربوط">
-        <input type="password" id="pass" placeholder="كلمة السر">
-        <button class="btn" onclick="login()">دخول</button>
+    <div class="container">
+        <div id="login-screen">
+            <h2 style="color: var(--gold);">تسجيل الدخول</h2>
+            <input type="text" id="userNum" placeholder="الرقم المربوط">
+            <input type="password" id="userPass" placeholder="كلمة السر">
+            <button class="btn-main" onclick="handleLogin()">دخول / LOGIN</button>
+        </div>
+
+        <div id="settings-screen">
+            <pre>
+╭━━━━━━━━━━━❀━━━━━━━━━━━╮
+   ♡ FARES BOT SETTINGS ♡
+╰━━━━━━━━━━━❀━━━━━━━━━━━╯
+
+┌─────── ⋆⋅☆⋅⋆ ──────────┐
+       💗 *USER INFO* 💗
+└────────── ⋆⋅☆⋅⋆ ──────────┘
+   🎀 *Name* » <span class="val-set">Fares Al-Tamimi</span>
+   📱 *Number* » <span id="displayNum" class="val-set"></span>
+   🌐 *Mode* » <span class="val-on">Public</span>
+
+┌─────── ⋆⋅☆⋅⋆ ──────────┐
+      🛡️ *PROTECTION* 🛡️
+└────────── ⋆⋅☆⋅⋆ ──────────┘
+   🔗 Anti Link      » <span class="val-off">❌ OFF</span>
+   📞 Anti Call      » <span class="val-on">✅ ON</span>
+   🧭 Anti Bugs      » <span class="val-on">✅ ON</span>
+
+┌─────── ⋆⋅☆⋅⋆ ──────────┐
+      📊 *STATUS SECTION* 📊
+└────────── ⋆⋅☆⋅⋆ ──────────┘
+   👁️ Status Read       » <span class="val-on">✅ ON</span>
+   ❤️ Status React      » <span class="val-on">✅ ON</span>
+
+┌─────── ⋆⋅☆⋅⋆ ──────────┐
+       🤖 *AUTOMATION* 🤖
+└────────── ⋆⋅☆⋅⋆ ──────────┘
+   🟢 Always Online      » <span class="val-on">✅ ON</span>
+   👁️ Auto Read Msg      » <span class="val-on">✅ ON</span>
+            </pre>
+            <button class="btn-main" onclick="alert('تم حفظ الإعدادات بنجاح')">حفظ الإعدادات / SAVE</button>
+        </div>
     </div>
-    <div class="box" id="panel" style="display:none;">
-        <h2 style="color:var(--gold);">لوحة التحكم</h2>
-        <p>مرحباً بك في إعدادات بوت فارس</p>
-        <button class="btn" onclick="alert('تم الحفظ')">حفظ الإعدادات</button>
-    </div>
+
     <script>
-        function login() {
-            if(document.getElementById('pass').value === 'Fares-9900') {
-                document.getElementById('login').style.display = 'none';
-                document.getElementById('panel').style.display = 'block';
-            } else { alert('كلمة السر خطأ'); }
+        function handleLogin() {
+            const num = document.getElementById('userNum').value;
+            const pass = document.getElementById('userPass').value;
+            // كلمة السر المعتمدة في كودك السابق
+            if(pass === 'Fares-9900') {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('settings-screen').style.display = 'block';
+                document.getElementById('displayNum').innerText = num;
+            } else {
+                alert("كلمة السر خاطئة!");
+            }
         }
     </script>
 </body>
