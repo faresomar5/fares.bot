@@ -3,90 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم فارس بوت</title>
+    <title>Golden Queen Dashboard - Fares</title>
     <style>
-        :root { --gold: #d4a017; --bg: #0d0d12; --card: #16161e; --text: #f0eaf5; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { background: var(--card); width: 100%; max-width: 500px; padding: 25px; border-radius: 20px; border: 1px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .header { text-align: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
-        .setting-item { display: flex; justify-content: space-between; align-items: center; background: #0a0a0f; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #222; }
-        .setting-info h4 { margin: 0; color: var(--gold); font-size: 16px; }
-        .setting-info p { margin: 5px 0 0; font-size: 12px; color: #888; }
-        
-        /* Switch Toggle Style */
-        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #2ecc71; }
-        input:checked + .slider:before { transform: translateX(24px); }
-        
-        .save-btn { width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 12px; color: #000; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 16px; }
+        :root { --gold-grad: linear-gradient(135deg, #d4a017 0%, #f9d976 100%); --bg: #0b0b10; --card: rgba(22, 22, 30, 0.95); }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow-x: hidden; }
+        .glass-panel { background: var(--card); width: 90%; max-width: 450px; padding: 30px; border-radius: 25px; border: 1px solid rgba(212, 160, 23, 0.3); box-shadow: 0 15px 35px rgba(0,0,0,0.7); backdrop-filter: blur(10px); text-align: center; }
+        .logo-area { margin-bottom: 25px; }
+        .logo-area img { width: 80px; border-radius: 50%; border: 2px solid #d4a017; padding: 5px; }
+        h1 { font-size: 24px; letter-spacing: 2px; margin: 10px 0; background: var(--gold-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-group input { width: 100%; padding: 15px 45px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 12px; color: white; box-sizing: border-box; font-size: 16px; }
+        .btn-login { width: 100%; padding: 16px; background: var(--gold-grad); border: none; border-radius: 12px; color: #000; font-weight: bold; cursor: pointer; font-size: 17px; box-shadow: 0 5px 15px rgba(212, 160, 23, 0.4); }
+        .settings-area { display: none; text-align: right; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+        .emoji-input { width: 60px; background: #000; border: 1px solid #d4a017; color: white; text-align: center; padding: 5px; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2 style="color: var(--gold); margin: 0;">FARES BOT PANEL</h2>
-            <p style="font-size: 13px; color: #888;">إدارة إعدادات البوت الخاصة بك</p>
+
+    <div class="glass-panel">
+        <div id="login-section">
+            <div class="logo-area">
+                <img src="https://i.ibb.co/L6S0GzZ/fares.jpg" alt="Logo">
+                <h1>GOLDEN QUEEN</h1>
+                <p style="color: #888; font-size: 12px;">CONTACT SAVE ADMIN 🔐</p>
+            </div>
+            <div class="input-group">
+                <input type="text" id="phone" placeholder="رقم المالك 📞">
+            </div>
+            <div class="input-group">
+                <input type="password" id="pass" placeholder="كلمة المرور 🔑">
+            </div>
+            <p style="font-size: 11px; color: #666;">💡 نسيت كلمة المرور؟ أرسل .settings في محادثة المالك</p>
+            <button class="btn-login" onclick="attemptLogin()">تسجيل الدخول</button>
         </div>
 
-        <div id="settings-list">
+        <div id="settings-section" class="settings-area">
+            <h2 style="color: #d4a017;">إعداداتك الخاصة</h2>
+            <div class="setting-row">
+                <span>تغيير إيموجي التفاعل</span>
+                <input type="text" id="emojiVal" class="emoji-input" placeholder="❤️">
             </div>
-
-        <button class="save-btn" onclick="saveToBackend()">حفظ كافة التغييرات</button>
+            <div class="setting-row">
+                <span>منع المكالمات</span>
+                <input type="checkbox" checked>
+            </div>
+            <div class="setting-row">
+                <span>الوضع العام</span>
+                <input type="checkbox" checked>
+            </div>
+            <button class="btn-login" style="margin-top: 20px;" onclick="saveSettings()">حفظ التعديلات</button>
+        </div>
     </div>
 
     <script>
-        // مصفوفة الإعدادات
-        let settings = {
-            antiLink: false,
-            antiCall: true,
-            autoRead: true,
-            autoReact: true,
-            alwaysOnline: true,
-            publicMode: true
-        };
-
-        // عرض الإعدادات في الواجهة
-        function renderSettings() {
-            const list = document.getElementById('settings-list');
-            list.innerHTML = '';
-            const names = {
-                antiLink: ["منع الروابط", "حذف الروابط تلقائياً"],
-                antiCall: ["منع المكالمات", "رفض المكالمات الواردة"],
-                autoRead: ["قراءة الحالات", "مشاهدة الحالات تلقائياً"],
-                autoReact: ["تفاعل الحالات", "إضافة قلب للحالات"],
-                alwaysOnline: ["متصل دائماً", "إظهار البوت أونلاين"],
-                publicMode: ["الوضع العام", "البوت يستجيب للجميع"]
-            };
-
-            for (let key in settings) {
-                list.innerHTML += `
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>${names[key][0]}</h4>
-                            <p>${names[key][1]}</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="${key}" ${settings[key] ? 'checked' : ''} onchange="updateVal('${key}')">
-                            <span class="slider"></span>
-                        </label>
-                    </div>`;
-            }
+        function attemptLogin() {
+            // سيتم هنا التحقق من السيرفر، حالياً تجريبي:
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('settings-section').style.display = 'block';
         }
-
-        function updateVal(key) {
-            settings[key] = document.getElementById(key).checked;
+        function saveSettings() {
+            const emoji = document.getElementById('emojiVal').value;
+            alert('تم حفظ الإيموجي الجديد: ' + emoji);
         }
-
-        async function saveToBackend() {
-            // هنا نقوم بإرسال الإعدادات للسيرفر ليحفظها في ملف JSON
-            alert("تم الحفظ بنجاح ✅");
-            // ملاحظة: يمكنك ربطها بـ API السيرفر لاحقاً
-        }
-
-        renderSettings();
     </script>
 </body>
 </html>
