@@ -3,421 +3,235 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>إعدادات الموقع</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>GOLDEN QUEEN | لوحة التحكم</title>
   <style>
     :root {
-      --bg:#0d0d12; --bg2:#13131c; --card:rgba(26,26,39,0.95);
-      --border:rgba(255,255,255,0.07); --border-accent:rgba(212,160,85,0.35);
-      --gold:#d4a055; --gold-light:#f0c880; --rose:#e8697a; --rose-light:#f5a0ac;
-      --text:#f0eaf5; --muted:#8a849a; --faint:#4a4460;
-      --c:#00d2ff; --c2:#3a7bd5;
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --border: #334155;
+      --code: #0b1220;
+      --gold: #d4a017;
     }
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    html { scroll-behavior:smooth; }
+    * { box-sizing: border-box; }
     body {
-      background:var(--bg); color:var(--text);
-      font-family:'DM Sans',sans-serif;
-      overflow-x:hidden; min-height:100vh;
-    }
-    body::before {
-      content:''; position:fixed; inset:0;
-      background:
-        radial-gradient(ellipse 60% 40% at 15% 5%,  rgba(0,210,255,0.05)  0%, transparent 60%),
-        radial-gradient(ellipse 50% 35% at 85% 85%, rgba(212,160,85,0.06) 0%, transparent 60%),
-        linear-gradient(rgba(0,210,255,0.015) 1px, transparent 1px),
-        linear-gradient(90deg,rgba(0,210,255,0.015) 1px, transparent 1px);
-      background-size:100% 100%, 100% 100%, 60px 60px, 60px 60px;
-      pointer-events:none; z-index:0;
-    }
-    body::after {
-      content:''; position:fixed; left:0; top:0; width:100%; height:2px;
-      background:linear-gradient(90deg, transparent 0%, var(--gold) 30%, var(--c) 50%, var(--gold) 70%, transparent 100%);
-      box-shadow:0 0 16px 3px rgba(212,160,85,0.5);
-      animation:laser 8s ease-in-out infinite;
-      z-index:9998; pointer-events:none;
-    }
-    @keyframes laser { 0%,100%{top:-5%;opacity:0} 5%{opacity:1} 95%{opacity:1} 50%{top:105%} }
-
-    h1,h2,h3 { font-family:'Syne',sans-serif; }
-    code,.mono { font-family:'JetBrains Mono',monospace; }
-
-    .glass {
-      background:var(--card); backdrop-filter:blur(20px);
-      border:1px solid var(--border); border-radius:24px;
-      position:relative; overflow:hidden;
-    }
-    .glass::before {
-      content:''; position:absolute; inset:0;
-      background:linear-gradient(135deg,rgba(255,255,255,0.03) 0%,transparent 60%);
-      pointer-events:none; border-radius:inherit;
-    }
-    .glass:hover { border-color:var(--border-accent); }
-
-    .inp {
-      background:rgba(13,13,18,0.8);
-      border:1px solid rgba(255,255,255,0.09);
-      border-radius:12px; padding:11px 14px;
-      width:100%; outline:none; color:var(--text);
-      font-size:13px; font-family:'DM Sans',sans-serif;
-      transition:border-color 0.25s, box-shadow 0.25s;
-    }
-    .inp:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,160,85,0.12); }
-    .inp::placeholder { color:var(--faint); }
-    .inp:disabled { opacity:0.5; cursor:not-allowed; }
-    select.inp option { background:#13131c; }
-    .inp-error { border-color:#ef4444 !important; }
-    .inp-error:focus { box-shadow:0 0 0 3px rgba(239,68,68,0.12) !important; }
-
-    .toggle-wrap {
-      width:50px; height:26px; border-radius:99px;
-      position:relative; cursor:pointer; transition:background 0.35s; flex-shrink:0;
-    }
-    .toggle-wrap.on  { background:linear-gradient(90deg,var(--gold),#b8853a); box-shadow:0 0 10px rgba(212,160,85,0.4); }
-    .toggle-wrap.off { background:rgba(255,255,255,0.09); }
-    .toggle-thumb {
-      width:20px; height:20px; background:white; border-radius:50%;
-      position:absolute; top:3px; transition:left 0.35s cubic-bezier(.4,0,.2,1);
-      box-shadow:0 1px 4px rgba(0,0,0,0.4);
-    }
-    .toggle-wrap.on  .toggle-thumb { left:27px; }
-    .toggle-wrap.off .toggle-thumb { left:3px; }
-
-    .stripe { position:absolute; top:0; left:0; width:4px; height:100%; border-radius:24px 0 0 24px; }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-    .fade-up { animation:fadeUp 0.55s ease-out forwards; }
-    .delay-1 { animation-delay:0.1s; opacity:0; }
-    .delay-2 { animation-delay:0.2s; opacity:0; }
-    .delay-3 { animation-delay:0.3s; opacity:0; }
-    .delay-4 { animation-delay:0.4s; opacity:0; }
-    .delay-5 { animation-delay:0.5s; opacity:0; }
-
-    .lang-overlay {
-      position:fixed; inset:0;
-      background:radial-gradient(ellipse at center, #0a1020 0%, var(--bg) 100%);
-      z-index:10000; display:flex; align-items:center; justify-content:center;
-    }
-    .lang-btn {
-      padding:14px 20px; border-radius:16px;
-      font-family:'Syne',sans-serif; font-weight:700; font-size:15px;
-      border:1px solid var(--border); cursor:pointer;
-      transition:transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-      display:flex; align-items:center; gap:12px;
-    }
-    .lang-btn:hover { transform:translateY(-2px); border-color:var(--border-accent); }
-    .lang-btn:active { transform:scale(0.96); }
-
-    .spin {
-      width:16px; height:16px;
-      border:2px solid var(--gold); border-bottom-color:transparent;
-      border-radius:50%; animation:spinAnim 0.8s linear infinite; display:inline-block;
-    }
-    @keyframes spinAnim { to{transform:rotate(360deg)} }
-
-    @keyframes toastIn {
-      from{opacity:0;transform:translateX(-50%) translateY(-20px) scale(0.9)}
-      to  {opacity:1;transform:translateX(-50%) translateY(0)     scale(1)}
-    }
-    .toast-anim { animation:toastIn 0.35s cubic-bezier(.4,0,.2,1) forwards; }
-
-    .sec-label {
-      font-family:'Syne',sans-serif; font-weight:700; font-size:11px;
-      letter-spacing:0.15em; text-transform:uppercase;
-      display:flex; align-items:center; gap:8px;
-    }
-    .toggle-row {
-      display:flex; justify-content:space-between; align-items:center;
-      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);
-      padding:12px 16px; border-radius:14px; transition:background 0.2s, border-color 0.2s;
-    }
-    .toggle-row:hover { background:rgba(255,255,255,0.05); border-color:var(--border-accent); }
-
-    .rtl { direction:rtl; }
-
-    .save-btn {
-      background:linear-gradient(135deg,var(--gold) 0%,#b8853a 100%);
-      border-radius:20px; font-family:'Syne',sans-serif;
-      font-weight:800; font-size:15px; letter-spacing:0.05em;
-      padding:16px 36px; border:none; cursor:pointer; color:#0d0d0d;
-      display:flex; align-items:center; gap:10px;
-      box-shadow:0 8px 32px rgba(212,160,85,0.4), 0 0 0 1px rgba(255,255,255,0.08);
-      transition:transform 0.2s, box-shadow 0.2s;
-    }
-    .save-btn:hover  { transform:translateY(-2px); box-shadow:0 12px 40px rgba(212,160,85,0.55); }
-    .save-btn:active { transform:scale(0.97); }
-
-    .img-slot {
-      width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden;
-      background:rgba(0,0,0,0.3); border:1px dashed rgba(255,255,255,0.1);
-      display:flex; align-items:center; justify-content:center;
-    }
-    .img-slot img { width:100%; height:100%; object-fit:cover; }
-
-    .upload-lbl {
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      padding:10px; background:rgba(255,255,255,0.04);
-      border:1px solid rgba(255,255,255,0.08); border-radius:12px; cursor:pointer;
-      font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
-      color:#94a3b8; transition:background 0.2s, border-color 0.2s, color 0.2s;
-    }
-    .upload-lbl:hover { background:rgba(212,160,85,0.1); border-color:var(--border-accent); color:var(--gold); }
-
-    .app-badge {
-      background:linear-gradient(135deg,var(--gold),#b8853a);
-      padding:4px 12px; border-radius:30px; font-size:11px;
-      font-weight:700; letter-spacing:0.05em; color:#0d0d0d;
-      display:inline-flex; align-items:center; gap:6px;
-      box-shadow:0 2px 8px rgba(212,160,85,0.35);
-    }
-
-    .validation-hint {
-      font-size:10px; margin-top:4px;
-      display:flex; justify-content:space-between;
-    }
-    .error-text  { color:#ef4444; }
-    .hint-text   { color:var(--faint); }
-    .counter     { color:var(--faint); }
-
-    /* emoji picker styles - ONE EMOJI AT A TIME */
-    .emoji-grid {
+      margin: 0;
+      font-family: "Tahoma", "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
       display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-      padding: 10px 0;
+      flex-direction: column;
     }
-    .emoji-option {
-      font-size: 26px;
-      cursor: pointer;
-      transition: transform 0.15s ease, filter 0.1s;
-      background: rgba(255,255,255,0.03);
-      width: 50px;
-      height: 50px;
+
+    /* واجهة تسجيل الدخول */
+    #login-ui {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: var(--panel);
+      width: 100%;
+      max-width: 400px;
+      padding: 35px;
+      border-radius: 25px;
+      border: 1px solid var(--border);
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+    }
+    .login-card h2 { color: var(--gold); margin-bottom: 25px; }
+    .login-card input {
+      width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--bg); color: #fff; text-align: center;
+    }
+    .btn-login {
+      width: 100%; padding: 15px; background: var(--accent); border: none;
+      border-radius: 12px; color: #fff; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px;
+    }
+
+    /* واجهة الإعدادات (مخفية افتراضياً) */
+    #settings-ui { display: none; }
+
+    /* تنسيقات الإعدادات الأصلية */
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
+    .hero {
+      background: linear-gradient(135deg, rgba(34,197,94,.18), rgba(59,130,246,.12));
+      border: 1px solid rgba(148,163,184,.18);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.25);
+    }
+    h1, h2, h3 { margin: 0 0 12px; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.2rem; color: #f8fafc; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .summary-item {
+      background: rgba(15,23,42,.75);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      min-height: 92px;
+    }
+    .summary-label { display: block; color: var(--muted); font-size: .92rem; margin-bottom: 8px; }
+    .summary-value { word-break: break-word; color: #fff; font-weight: 700; }
+    .card {
+      background: rgba(17,24,39,.88);
+      border: 1px solid var(--border);
       border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.06);
+      padding: 18px;
+      margin: 18px 0;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
     }
-    .emoji-option:hover { transform: scale(1.12); background: rgba(212,160,85,0.2); border-color: var(--border-accent); }
-    .emoji-remove {
-      background: rgba(239,68,68,0.1);
-      font-size: 14px;
-      color: #f87171;
-      width: auto;
-      padding: 0 12px;
-      gap: 6px;
-      font-family: monospace;
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th, td { border-bottom: 1px solid rgba(148,163,184,.15); padding: 12px 10px; text-align: right; vertical-align: top; }
+    th { color: #cbd5e1; background: rgba(15,23,42,.65); position: sticky; top: 0; }
+    td code {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px 8px;
+      color: #93c5fd;
+      font-family: Consolas, monospace;
+      display: inline-block;
     }
-    .emoji-remove:hover { background: rgba(239,68,68,0.25); transform: scale(1.02); }
-    .emoji-add-btn {
-      background: rgba(212,160,85,0.15);
-      border: 1px dashed var(--gold);
-      font-size: 20px;
-      width: 50px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 18px;
-      cursor: pointer;
-      font-weight: bold;
-      color: var(--gold);
-      transition: 0.2s;
+    .note {
+      border-inline-start: 4px solid var(--accent);
+      background: rgba(34,197,94,.08);
+      padding: 14px 16px;
+      border-radius: 14px;
+      color: #dcfce7;
     }
-    .emoji-add-btn:hover { background: rgba(212,160,85,0.3); transform: scale(1.03); }
-    .inline-emoji-input {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 10px;
+    pre {
+      background: var(--code);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: .92rem;
     }
+    .footer { color: var(--muted); text-align: center; margin-top: 24px; font-size: .92rem; }
+    
+    .fade-in { animation: fadeIn 0.6s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
-<div id="root"></div>
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-  <symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
-  <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
-  <symbol id="ic-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></symbol>
-  <symbol id="ic-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
-  <symbol id="ic-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
-  <symbol id="ic-phone-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c1.12.45 2.3.78 3.53.98a2 2 0 0 1 1.67 1.98v3.05a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 2.15 5.5 2 2 0 0 1 4.12 3.32h3.05a2 2 0 0 1 2 1.67c.2 1.23.53 2.41.98 3.53a2 2 0 0 1-.45 2.11L8.43 11.9a16 16 0 0 0 2.61 3.41"/><line x1="23" y1="1" x2="1" y2="23"/></symbol>
-  <symbol id="ic-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
-  <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
-  <symbol id="ic-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
-  <symbol id="ic-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
-  <symbol id="ic-log-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
-  <symbol id="ic-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></symbol>
-  <symbol id="ic-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
-  <symbol id="ic-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
-  <symbol id="ic-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></symbol>
-  <symbol id="ic-bug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6z"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></symbol>
-  <symbol id="ic-robot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="8" r="1"/><circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/></symbol>
-</svg>
-<script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
-const API = { login: 'https://bot.goldenqueen.store/api/login', saveSett: 'https://bot.goldenqueen.store/api/settings/save', loadSett: 'https://bot.goldenqueen.store/api/settings/load', upload: 'https://bot.goldenqueen.store/api/image/upload' };
-async function apiPost(endpoint, payloadObj) {
-  const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadObj) });
-  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || err.message || `HTTP ${res.status}`); }
-  return res.json();
-}
-async function apiGet(endpoint, payloadObj) { const qs = new URLSearchParams(payloadObj).toString(); const res = await fetch(`${endpoint}?${qs}`); if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || err.message || `HTTP ${res.status}`); } return res.json(); }
-const T = {
-  en: { sel:'Select Language', login:'Admin Login', num:'Owner Number', pass:'Password', auth:'Sign In', pwH:"Forgot password? Type '.settings'", save:'Save Settings', notice:'⚡ Settings take ~3 minutes to activate.', basic:'Basic Info', sys:'System Automation', group:'Group Automation', logos:'Logos', status:'Status Message', calls:'Call Control', delete:'Anti-Delete', ok:'Settings Saved! ✅', logout:'Logout', uploading:'Uploading…', gallery:'Upload Image', appId:'APP ID', detected:'Detected', numbersOnly:'Numbers only', maxChars:'Maximum 15 characters', ageHint:'Max 2 digits', ageError:'1-99', prefixHint:'Symbols only', prefixError:'Only symbols allowed', chars:'characters', emojiTitle:'Status Reaction Emojis (max 10)', emojiPlaceholder:'Type ONE emoji', antiBug:'Anti Bug', antiBot:'Anti Bot', actionDelete:'Delete', actionKick:'Delete+Kick' },
-  si: { sel:'භාෂාව', login:'ඇඩ්මින් පිවිසුම', num:'Owner අංකය', pass:'මුරපදය', auth:'පිවිසෙන්න', pwH:"මුරපදය අමතකද?", save:'සුරකින්න', notice:'⚡ විනාඩි 3ක් ගතවේ.', basic:'මූලික', sys:'ස්වයංක්‍රීය', group:'සමූහ', logos:'ලෝගෝ', status:'ස්ටේටස්', calls:'ඇමතුම්', delete:'ඩිලීට්', ok:'සුරැකුණා! ✅', logout:'පිටවෙන්න', uploading:'උඩුගත කරමින්…', gallery:'ඡායාරූප', appId:'යෙදුම් අංකය', detected:'හමුවිය', numbersOnly:'ඉලක්කම් පමණයි', maxChars:'අකුරු 15', ageHint:'අංක 2', ageError:'1-99', prefixHint:'සංකේත පමණයි', prefixError:'සංකේත පමණක්', chars:'අකුරු', emojiTitle:'ස්ටේටස් ඉමෝජි (උපරිම 10)', emojiPlaceholder:'එක ඉමෝජියක්', antiBug:'ඇන්ටි බග්', antiBot:'ඇන්ටි බොට්', actionDelete:'මකන්න', actionKick:'මකා කපන්න' },
-  ta: { sel:'மொழி', login:'நிர்வாக உள்நுழைவு', num:'உரிமையாளர் எண்', pass:'கடவுச்சொல்', auth:'உள்நுழைக', pwH:"கடவுச்சொல் மறந்தால் .settings", save:'சேமிக்கவும்', notice:'⚡ 3 நிமிடங்களில் செயல்படும்.', basic:'அடிப்படை', sys:'தானியங்கி', group:'குழு', logos:'லோகோக்கள்', status:'நிலை செய்தி', calls:'அழைப்பு', delete:'நீக்கல்', ok:'சேமிக்கப்பட்டது! ✅', logout:'வெளியேறு', uploading:'பதிவேற்றுகிறது…', gallery:'படம்', appId:'பயன்பாட்டு ஐடி', detected:'கண்டுபிடிக்கப்பட்டது', numbersOnly:'எண்கள் மட்டும்', maxChars:'15 எழுத்துக்கள்', ageHint:'2 இலக்கங்கள்', ageError:'1-99', prefixHint:'குறியீடுகள் மட்டும்', prefixError:'குறியீடுகள் மட்டும்', chars:'எழுத்துக்கள்', emojiTitle:'ஸ்டேட்டஸ் எமோஜிகள் (அதிகபட்சம் 10)', emojiPlaceholder:'ஒரு எமோஜி', antiBug:'ஆன்டி பக்', antiBot:'ஆன்டி போட்', actionDelete:'நீக்கு', actionKick:'நீக்கு+உதை' },
-  ar: { sel:'اختر اللغة', login:'دخول المشرف', num:'الرقم المربوط', pass:'كلمة المرور', auth:'تسجيل الدخول', pwH:"إذا نسيت كلمة المرور اكتب .settings داخل البوت", save:'حفظ الإعدادات', notice:'⚡ قد تستغرق التغييرات حوالي 3 دقائق حتى تتفعل.', basic:'المعلومات', sys:'الأتمتة', group:'مجموعة', logos:'الشعارات', status:'رسالة الحالة', calls:'المكالمات', delete:'حماية الحذف', ok:'تم حفظ الإعدادات بنجاح ✅', logout:'تسجيل الخروج', uploading:'جاري الرفع…', gallery:'رفع صورة', appId:'رقم التطبيق', detected:'تم اكتشافه تلقائيًا', numbersOnly:'أرقام فقط', maxChars:'15 حرفًا', ageHint:'رقمان', ageError:'1-99', prefixHint:'رموز فقط', prefixError:'رموز فقط', chars:'حروف', emojiTitle:'رموز تعبيرية للحالة (10 كحد أقصى)', emojiPlaceholder:'أدخل إيموجي واحد', antiBug:'مكافحة البق', antiBot:'مكافحة البوت', actionDelete:'حذف', actionKick:'حذف+طرد' }
-};
-const Icon = ({ id, size=16, className='' }) => (<svg width={size} height={size} className={className}><use href={`#ic-${id}`} /></svg>);
-const Toggle = ({ value, onChange }) => { const on = value === 'on'; return (<div onClick={() => onChange(on ? 'off' : 'on')} className={`toggle-wrap ${on ? 'on' : 'off'}`} role="switch"><div className="toggle-thumb" /></div>); };
-const Card = ({ children, stripe, shadow, delay='' }) => (<div className={`glass fade-up ${delay}`} style={{ padding:'28px 28px 24px' }}><div className="stripe" style={{ background:stripe, boxShadow:`0 0 16px ${shadow}` }} />{children}</div>);
-const SectionTitle = ({ icon, color, label }) => (<div className="sec-label" style={{ color }}><Icon id={icon} size={15} />{label}</div>);
-const Field = ({ label, children }) => (<div><p style={{ fontSize:11, color:'var(--faint)', marginBottom:6, textTransform:'uppercase' }}>{label}</p>{children}</div>);
 
-function App() {
-  const [lang, setLang] = useState('ar'); const [isAuth, setIsAuth] = useState(false); const [ownerNum, setOwnerNum] = useState(''); const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false); const [toast, setToast] = useState(''); const [uploading, setUploading] = useState(null);
-  const [appId, setAppId] = useState(''); const [errors, setErrors] = useState({ name:'', from:'', age:'', prefix:'', footer2:'' });
-  const ownerNumRef = useRef(''); const appIdRef = useRef('');
-  
-  // Fix: Extract appId from password EXACTLY like backend does
-  // Backend: pass.slice(-1) for 6 chars, pass.slice(-2) for 7 chars
-  const extractAppIdFromPass = useCallback((passStr) => {
-    if (!passStr) return '';
-    if (passStr.length === 6) return passStr.slice(-1);  // last 1 char
-    if (passStr.length === 7) return passStr.slice(-2); // last 2 chars
-    return '';
-  }, []);
-  
-  const [s, setS] = useState({
-    name:'Golden Queen', from:'Sri Lanka', age:'24', prefix:'.', footer2:'Golden Queen Bot',
-    mode:'public', antiBad:'off', antiLink:'off', autoRecording:'off', autoTyping:'off',
-    alwaysOnline:'off', autoStatusRead:'on', autoStatusReact:'on', autoRead:'off',
-    autoBlock:'off', autoReact:'off', autoVoice:'off', antiDelete:'off', sendDeleteTo:'owner',
-    antiCall:'off', excludeCallNumbers:'', statusMsgSend:'off', statusMsgType:'default', customMsg:'',
-    gaGroupJid:'', gaTimezone:'Asia/Colombo', gaCloseTime:'15:00', gaOpenTime:'05:00',
-    menu:'https://raw.githubusercontent.com/sulamadara1147/imageupload/main/images/img-1777228727080-35iwj.png', alive:'https://raw.githubusercontent.com/sulamadara1147/imageupload/main/images/img-1777228727080-35iwj.png', owner:'https://raw.githubusercontent.com/sulamadara1147/imageupload/main/images/img-1777228727080-35iwj.png',
-    statusCustomReact: '',
-    antiBug: 'off',
-    antiBot: 'off',
-    antiBotAction: 'delete'
-  });
-  
-  const tx = T[lang || 'en']; const upd = useCallback((k, v) => setS(p => ({ ...p, [k]: v })), []);
-  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); }, []);
-  
-  // Update appId when password changes - using correct extraction logic
-  useEffect(() => {
-    const extractedId = extractAppIdFromPass(password);
-    setAppId(extractedId);
-  }, [password, extractAppIdFromPass]);
-  
-  useEffect(() => { ownerNumRef.current = ownerNum; }, [ownerNum]); 
-  useEffect(() => { appIdRef.current = appId; }, [appId]);
-  
-  const validators = { name: v => { const t = v.slice(0,15); setErrors(p=>({...p,name: t.length===15?tx.maxChars:''})); return t; }, from: v => { const t = v.slice(0,15); setErrors(p=>({...p,from: t.length===15?tx.maxChars:''})); return t; }, footer2:v => { const t = v.slice(0,15); setErrors(p=>({...p,footer2:t.length===15?tx.maxChars:''})); return t; }, age: v => { const n = v.replace(/[^0-9]/g,'').slice(0,2); const err = n && (parseInt(n)<1||parseInt(n)>99) ? tx.ageError : ''; setErrors(p=>({...p,age:err})); return n; }, prefix: v => { const ok = /^[.!@#$%^&*()\-_+[\]{};':"\\|,.<>/?~]*$/.test(v); setErrors(p=>({...p,prefix:ok?'':tx.prefixError})); return ok ? v : v.slice(0,-1); } };
-  const handleInput = (field, value) => upd(field, validators[field] ? validators[field](value) : value);
-  
-  const handleLogin = useCallback(async (e) => { 
-    e.preventDefault(); setLoading(true); 
-    try { 
-      const r = await apiPost(API.login, { num: ownerNum, pass: password }); 
-      if (!r.success) throw new Error(r.message || '⛔ Wrong User Number Or Password'); 
-      setIsAuth(true); 
-      showToast('تم تسجيل الدخول بنجاح'); 
-      try { 
-        // Use extracted appId for loading settings
-        const currentAppId = extractAppIdFromPass(password);
-        const lr = await apiGet(API.loadSett, { num: ownerNum, app: currentAppId }); 
-        if (lr.success && lr.settings) { 
-          setS(prev => { const next = { ...prev }; Object.keys(prev).forEach(k => { if (lr.settings[k] !== undefined) next[k] = lr.settings[k]; }); return next; }); 
-        } 
-      } catch (loadErr) { console.warn(loadErr); } 
-    } catch (err) { alert(err.message || 'فشل تسجيل الدخول'); } 
-    finally { setLoading(false); } 
-  }, [ownerNum, password, showToast, extractAppIdFromPass]);
-  
-  const handleSave = useCallback(async (e) => { 
-    e.preventDefault(); setLoading(true); 
-    try { 
-      const r = await apiPost(API.saveSett, { ...s, num: ownerNumRef.current, app: appIdRef.current }); 
-      if (!r.success) throw new Error(r.error || 'Save failed'); 
-      showToast(tx.ok); 
-    } catch (err) { alert(err.message || 'فشل حفظ الإعدادات'); } 
-    finally { setLoading(false); } 
-  }, [s, tx.ok, showToast]);
-  
-  const handleUpload = useCallback((e, fieldKey) => { const file = e.target.files[0]; if (!file) return; setUploading(fieldKey); const reader = new FileReader(); reader.onload = async () => { try { const r = await apiPost(API.upload, { image: reader.result.split(',')[1], fieldKey, num: ownerNumRef.current }); if (!r.success) throw new Error(r.error || 'Upload failed'); upd(r.fieldKey, r.url); showToast('تم رفع الصورة بنجاح'); } catch (err) { alert('خطأ أثناء رفع الصورة: ' + err.message); } finally { setUploading(null); } }; reader.readAsDataURL(file); }, [upd, showToast]);
+  <div id="login-ui">
+    <div class="login-card fade-in">
+      <div style="font-size: 50px; margin-bottom: 10px;">👑</div>
+      <h2>دخول المشرف</h2>
+      <p>يرجى إدخال بيانات الاعتماد للوصول للإعدادات</p>
+      <input type="text" id="phone" placeholder="رقم الهاتف (967...)">
+      <input type="password" id="pass" placeholder="كلمة المرور 🔐">
+      <button class="btn-login" onclick="login()">تسجيل الدخول</button>
+    </div>
+  </div>
 
-  // EMOJI LOGIC - ONE EMOJI AT A TIME (සිංහලෙන්: එක එක ඉමෝජියක් පමණයි)
-  const emojiList = (s.statusCustomReact || '').split(',').filter(e => e.trim().length > 0 && !e.includes(' ')).slice(0,10);
-  
-  const addEmoji = (newEmoji) => { 
-    if (!newEmoji) return; 
-    const trimmed = newEmoji.trim();
-    if (trimmed.length === 0) return;
-    // Allow only single emoji (no spaces, no multiple characters that aren't emoji)
-    // Simple regex to detect if it's a single emoji
-    const emojiRegex = /^(\p{Emoji_Presentation}|\p{Extended_Pictographic})$/u;
-    if (!emojiRegex.test(trimmed)) {
-      showToast?.(`"${trimmed}" is not a valid single emoji!`) || alert('Please enter ONE emoji only!');
-      return;
+  <div id="settings-ui" class="container fade-in">
+    <section class="hero">
+      <h1>إعدادات الموقع المستخرجة من الملف البرمجي</h1>
+      <p>تم تجميع إعدادات الموقع الافتراضية بالكامل في ملف HTML واحد، مع تنظيمها حسب الفئات وإظهار المفتاح البرمجي والاسم الظاهر والقيمة الافتراضية لكل إعداد.</p>
+      <div class="summary-grid">
+        <div class="summary-item"><span class="summary-label">عدد الإعدادات</span><span class="summary-value">38</span></div>
+        <div class="summary-item"><span class="summary-label">رابط الموقع الأساسي</span><span class="summary-value">https://bot.goldenqueen.store</span></div>
+        <div class="summary-item"><span class="summary-label">صفحة الإعدادات</span><span class="summary-value">/settings</span></div>
+        <div class="summary-item"><span class="summary-label">واجهة التحميل</span><span class="summary-value">/api/settings/load</span></div>
+        <div class="summary-item"><span class="summary-label">واجهة الحفظ</span><span class="summary-value">/api/settings/save</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>ملاحظات مهمة</h2>
+      <div class="note">
+        هذه الصفحة تعرض الإعدادات الافتراضية الخاصة بالموقع كما ظهرت داخل الكود، وليست بالضرورة القيم الحالية المخزنة على السيرفر.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>بيانات أساسية</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>المفتاح البرمجي</th><th>الاسم الظاهر</th><th>القيمة الافتراضية</th><th>النوع</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>اسم البوت</td><td>fares</td><td>Text</td></tr>
+            <tr><td><code>ownerNumber</code></td><td>رقم التواصل</td><td>967773987296</td><td>Text</td></tr>
+            <tr><td><code>ownername</code></td><td>اسم المالك</td><td>fares</td><td>Text</td></tr>
+            <tr><td><code>mode</code></td><td>الوضع</td><td>private</td><td>Text</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>الحمولة الكاملة للإعدادات بصيغة واحدة</h2>
+      <pre id="payload-display">{'name': 'fares', 'from': 'Yemen', 'age': '24', 'prefix': '.', 'footer2': 'fares', 'mode': 'private', 'antiBad': 'off', 'antiLink': 'off', 'autoRecording': 'off', 'autoTyping': 'off', 'alwaysOnline': 'off', 'autoStatusRead': 'on', 'autoStatusReact': 'on', 'autoRead': 'off', 'autoBlock': 'off', 'autoReact': 'off', 'autoVoice': 'off', 'antiDelete': 'off', 'sendDeleteTo': 'owner', 'antiCall': 'off', 'statusMsgSend': 'off', 'statusMsgType': 'default', 'ownerNumber': '967773987296', 'ownername': 'fares', 'gaTimezone': 'Asia/Colombo', 'gaCloseTime': '15:00', 'gaOpenTime': '05:00'}</pre>
+    </section>
+
+    <div class="footer">GOLDEN QUEEN BOT SYSTEM &copy; 2026</div>
+  </div>
+
+  <script>
+    async function login() {
+      const phone = document.getElementById('phone').value;
+      const pass = document.getElementById('pass').value;
+
+      if(!phone || !pass) {
+          alert("يرجى إدخال البيانات كاملة");
+          return;
+      }
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: phone, password: pass })
+        });
+
+        const data = await res.json();
+
+        if(data.success) {
+          localStorage.setItem('bot_phone', phone);
+          localStorage.setItem('bot_pass', pass);
+          
+          // الانتقال لواجهة الإعدادات
+          document.getElementById('login-ui').style.display = 'none';
+          document.getElementById('settings-ui').style.display = 'block';
+        } else {
+          alert(data.message || "خطأ في بيانات الدخول");
+        }
+      } catch (e) {
+        alert("تعذر الاتصال بالسيرفر. تأكد من تشغيل البوت.");
+      }
     }
-    let current = [...emojiList];
-    if (current.includes(trimmed)) return;
-    const next = [...current, trimmed].slice(0,10);
-    upd('statusCustomReact', next.join(','));
-  };
-  
-  const removeEmoji = (idx) => { 
-    const next = [...emojiList]; 
-    next.splice(idx,1); 
-    upd('statusCustomReact', next.join(',')); 
-  };
-  
-  const handleEmojiKeyDown = (e) => { 
-    if (e.key === 'Enter') { 
-      e.preventDefault(); 
-      const inp = e.target; 
-      let raw = inp.value.trim(); 
-      if (raw) { 
-        addEmoji(raw); 
-        inp.value = ''; 
-      } 
-    } 
-  };
 
-  if (!lang) return (<div className="lang-overlay"><div style={{textAlign:'center', maxWidth:360}}><div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,rgba(212,160,85,0.15),rgba(58,123,213,0.15))',border:'1px solid var(--border-accent)',margin:'0 auto 20px',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon id="cpu" size={32} style={{color:'var(--gold)'}} /></div><h1 style={{fontWeight:800,fontSize:22}}>GOLDEN QUEEN</h1><p className="mono" style={{fontSize:11,color:'var(--faint)'}}>ADMIN PANEL</p><div style={{display:'grid',gap:12,marginTop:24}}>{['en','si','ta','ar'].map(c => (<button key={c} onClick={()=>setLang(c)} className="lang-btn" style={{justifyContent:'flex-start'}}><span style={{fontSize:22}}>{c==='en'?'🇬🇧':c==='si'?'🇱🇰':c==='ta'?'🇮🇳':'🇸🇦'}</span><span>{c==='en'?'English':c==='si'?'සිංහල':c==='ta'?'தமிழ்':'العربية'}</span></button>))}</div></div></div>);
-  const isRtl = lang === 'ar';
-  
-  if (!isAuth) return (<div className={isRtl?'rtl':''} style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',padding:24}}><div className="glass" style={{width:'100%',maxWidth:440,padding:'48px 40px'}}><div style={{textAlign:'center',marginBottom:36}}><div style={{width:56,height:56,borderRadius:16,background:'linear-gradient(135deg,rgba(212,160,85,0.15),rgba(58,123,213,0.15))',border:'1px solid var(--border-accent)',display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:16}}><Icon id="cpu" size={24} style={{color:'var(--gold)'}} /></div><h1 style={{fontWeight:800,fontSize:20,color:'var(--gold)'}}>{tx.login}</h1></div><form onSubmit={handleLogin} autoComplete="off"><div style={{position:'relative',marginBottom:16}}><span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',color:'var(--faint)'}}><Icon id="user" size={15} /></span><input className="inp" style={{paddingLeft:38,paddingRight:38,textAlign:isRtl?'right':'left'}} placeholder={tx.num} value={ownerNum} onChange={e=>setOwnerNum(e.target.value.replace(/[^0-9]/g,''))} required autoComplete="off" name="none-user" /></div><div style={{position:'relative',marginBottom:16}}><span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',color:'var(--faint)'}}><Icon id="lock" size={15} /></span><input className="inp" style={{paddingLeft:38,paddingRight:38,textAlign:isRtl?'right':'left'}} type="password" placeholder={tx.pass} value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="new-password" name="none-pass" /></div><p style={{color:'var(--muted)',fontSize:11,marginTop:-6,marginBottom:16}}>{tx.pwH}</p>{appId && (<div style={{background:'rgba(212,160,85,0.07)',border:'1px solid var(--border-accent)',borderRadius:14,padding:'12px 16px',marginBottom:16}}><div className="app-badge"><Icon id="smartphone" size={13} /><span>{tx.appId}</span></div><span style={{color:'var(--gold)',fontWeight:'bold',fontSize:18,marginLeft:12}}>{appId}</span><span style={{color:'var(--muted)',fontSize:11,marginLeft:8}}>{tx.detected}</span></div>)}<button type="submit" disabled={loading} style={{background:loading?'rgba(212,160,85,0.2)':'linear-gradient(135deg,var(--gold),#b8853a)',color:loading?'var(--muted)':'#0d0d0d',border:'none',borderRadius:14,padding:'14px',fontWeight:700,width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>{loading?<><span className="spin" />جاري تسجيل الدخول...</>:tx.auth}</button></form><button onClick={()=>setLang(null)} style={{marginTop:16,background:'none',border:'none',color:'var(--faint)',fontSize:12,cursor:'pointer'}}>← {tx.sel}</button></div></div>);
-
-  return (<div className={isRtl?'rtl':''}><div style={{position:'relative',zIndex:1}}>{toast && (<div className="toast-anim" style={{position:'fixed',top:24,left:'50%',transform:'translateX(-50%)',zIndex:10000,background:'linear-gradient(135deg,var(--gold),#b8853a)',color:'#0d0d0d',padding:'14px 32px',borderRadius:16,fontWeight:700}}>{toast}</div>)}<div style={{maxWidth:960,margin:'0 auto',padding:'32px 20px 120px'}}><header className="glass fade-up" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'20px 28px',marginBottom:24}}><div style={{display:'flex',alignItems:'center',gap:16}}><div style={{width:44,height:44,borderRadius:13,background:'linear-gradient(135deg,var(--gold),#b8853a)',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon id="cpu" size={20} style={{color:'#0d0d0d'}} /></div><div><h1 style={{fontWeight:800,fontSize:16}}>GOLDEN QUEEN</h1><p className="mono" style={{fontSize:11,color:'var(--faint)'}}>{ownerNum}</p></div></div><button onClick={()=>{setIsAuth(false);setOwnerNum('');setPassword('');}} style={{background:'rgba(239,68,68,0.08)',color:'#ef4444',border:'1px solid rgba(239,68,68,0.2)',borderRadius:12,padding:'9px 18px',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}><Icon id="log-out" size={13} />{tx.logout}</button></header><div className="fade-up delay-1" style={{marginBottom:24,padding:'14px 20px',background:'rgba(212,160,85,0.07)',border:'1px solid var(--border-accent)',borderRadius:16,color:'var(--gold)',fontSize:13,display:'flex',alignItems:'center',gap:12}}><Icon id="info" size={16} />{tx.notice}</div>{appId && (<div className="fade-up delay-1" style={{marginBottom:24,background:'rgba(212,160,85,0.07)',borderRadius:16,padding:'16px 24px',display:'flex',alignItems:'center',gap:16}}><div className="app-badge"><Icon id="smartphone" size={14} /><span>{tx.appId}</span></div><span style={{fontSize:24,fontWeight:'bold',color:'var(--gold)'}}>{appId}</span><span style={{color:'var(--muted)',fontSize:12}}>{tx.detected}</span></div>)}<form id="settingsForm" onSubmit={handleSave}><div style={{display:'flex',flexDirection:'column',gap:20}}><Card stripe="#3b82f6" shadow="rgba(59,130,246,0.25)" delay="delay-2"><SectionTitle icon="user" color="#60a5fa" label={tx.basic} /><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginTop:20}}><Field label="Owner Number"><input className="inp" value={ownerNum} disabled /></Field><Field label="Bot Name"><input className={`inp ${errors.name?'inp-error':''}`} placeholder="Golden Queen" value={s.name} onChange={e=>handleInput('name',e.target.value)} maxLength={15} /><div className="validation-hint"><span className={errors.name?'error-text':'hint-text'}>{errors.name||''}</span><span className="counter">{s.name.length}/15</span></div></Field><Field label="Location"><input className={`inp ${errors.from?'inp-error':''}`} value={s.from} onChange={e=>handleInput('from',e.target.value)} maxLength={15} /><div className="validation-hint"><span className={errors.from?'error-text':'hint-text'}>{errors.from||''}</span><span className="counter">{s.from.length}/15</span></div></Field><Field label="Age"><input className={`inp ${errors.age?'inp-error':''}`} placeholder="24" value={s.age} onChange={e=>handleInput('age',e.target.value)} maxLength={2} /><div className="validation-hint"><span className={errors.age?'error-text':'hint-text'}>{errors.age||tx.ageHint}</span></div></Field><Field label="Prefix"><input className={`inp ${errors.prefix?'inp-error':''}`} style={{fontFamily:'monospace'}} value={s.prefix} onChange={e=>handleInput('prefix',e.target.value)} maxLength={2} /><div className="validation-hint"><span className={errors.prefix?'error-text':'hint-text'}>{errors.prefix||tx.prefixHint}</span></div></Field><Field label="Footer"><input className={`inp ${errors.footer2?'inp-error':''}`} value={s.footer2} onChange={e=>handleInput('footer2',e.target.value)} maxLength={15} /><div className="validation-hint"><span className={errors.footer2?'error-text':'hint-text'}>{errors.footer2||''}</span><span className="counter">{s.footer2.length}/15</span></div></Field><Field label="Mode"><select className="inp" value={s.mode} onChange={e=>upd('mode',e.target.value)}><option value="public">Public</option><option value="private">Private</option><option value="inbox">Inbox Only</option><option value="group">Group Only</option><option value="admin">Admin Only</option></select></Field></div></Card>
-    <Card stripe="#a855f7" shadow="rgba(168,85,247,0.2)" delay="delay-3"><SectionTitle icon="zap" color="#c084fc" label={tx.sys} /><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))',gap:10,marginTop:20}}>{[{l:'Anti Bad Word',k:'antiBad'},{l:'Anti Link',k:'antiLink'},{l:'Always Online',k:'alwaysOnline'},{l:'Auto Typing',k:'autoTyping'},{l:'Status Seen',k:'autoStatusRead'},{l:'Auto Read',k:'autoRead'},{l:'Status React',k:'autoStatusReact'},{l:'Auto React',k:'autoReact'},{l:'Auto Voice',k:'autoVoice'},{l:'Auto Block',k:'autoBlock'},{l:'Auto Recording',k:'autoRecording'}].map(({l,k})=>(<div key={k} className="toggle-row"><span style={{fontSize:13,color:'#cbd5e1'}}>{l}</span><Toggle value={s[k]} onChange={v=>upd(k,v)} /></div>))}</div></Card>
-    <Card stripe="#06b6d4" shadow="rgba(6,182,212,0.2)" delay="delay-3"><SectionTitle icon="message" color="#22d3ee" label={tx.status} /><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,marginTop:20}}><div className="toggle-row"><span>Status Message Send</span><Toggle value={s.statusMsgSend} onChange={v=>upd('statusMsgSend',v)} /></div>{s.statusMsgSend === 'on' && (<><Field label="Message Type"><select className="inp" value={s.statusMsgType} onChange={e=>upd('statusMsgType',e.target.value)}><option value="default">Default</option><option value="custom">Custom</option></select></Field>{s.statusMsgType === 'custom' && (<Field label="Custom Message" style={{gridColumn:'1/-1'}}><textarea className="inp" rows={3} value={s.customMsg} onChange={e=>upd('customMsg',e.target.value)} placeholder="Custom…" /></Field>)}</>)}</div>
-    {/* Emoji Picker - ONE EMOJI AT A TIME (Enter key only, no comma separation) */}
-    <div style={{marginTop:16}}><p style={{fontSize:11,color:'var(--gold)',marginBottom:6,letterSpacing:'0.08em'}}>{tx.emojiTitle}</p><div className="emoji-grid">{emojiList.map((em,idx)=>(<div key={idx} className="emoji-option" onClick={()=>removeEmoji(idx)} title="Remove">{em}<span style={{fontSize:10,marginLeft:4,opacity:0.7}}>✕</span></div>))}{emojiList.length<10 && (<div className="inline-emoji-input" style={{width:'100%'}}><input type="text" className="inp" style={{flex:1}} placeholder={tx.emojiPlaceholder + " (Press Enter)"} onKeyDown={handleEmojiKeyDown} id="emojiQuickInput" /><button type="button" className="emoji-add-btn" onClick={()=>{const inp=document.getElementById('emojiQuickInput'); if(inp.value.trim()){ addEmoji(inp.value.trim()); inp.value='';} }}>+</button></div>)}<div className="validation-hint"><span className="hint-text">Max 10 emojis | Type ONE emoji then press Enter</span><span className="counter">{emojiList.length}/10</span></div></div></div></Card>
-    <Card stripe="#f59e0b" shadow="rgba(245,158,11,0.2)" delay="delay-4"><SectionTitle icon="image" color="#fbbf24" label={tx.logos} /><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16,marginTop:20}}>{[{key:'menu',label:'Menu Logo'},{key:'alive',label:'Alive Logo'},{key:'owner',label:'Owner Logo'}].map(({key,label}) => (<div key={key} style={{padding:16,background:'rgba(255,255,255,0.02)',borderRadius:18}}><p style={{fontSize:11,color:'var(--muted)'}}>{label}</p><div className="img-slot">{s[key]?<img src={s[key]} alt={label} />:<Icon id="image" size={28} style={{color:'var(--faint)'}} />}</div><input className="inp mono" style={{fontSize:11}} value={s[key]} onChange={e=>upd(key,e.target.value)} placeholder="https://…" /><label className="upload-lbl">{uploading===key?<><span className="spin"/>{tx.uploading}</>:<><Icon id="upload" size={13}/>{tx.gallery}</>}<input type="file" accept="image/*" hidden onChange={e=>handleUpload(e,key)} disabled={uploading!==null} /></label></div>))}</div></Card>
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}><Card stripe="#ef4444" shadow="rgba(239,68,68,0.2)"><SectionTitle icon="phone-off" color="#f87171" label={tx.calls} /><div style={{marginTop:20}}><div className="toggle-row"><span>Anti Call</span><Toggle value={s.antiCall} onChange={v=>upd('antiCall',v)} /></div>{s.antiCall==='on'&&(<Field label="Excluded Numbers"><input className="inp mono" value={s.excludeCallNumbers} onChange={e=>upd('excludeCallNumbers',e.target.value)} /></Field>)}</div></Card>
-    <Card stripe="#f97316" shadow="rgba(249,115,22,0.2)"><SectionTitle icon="trash-2" color="#fb923c" label={tx.delete} /><div><Field label="Anti-Delete Mode"><select className="inp" value={s.antiDelete} onChange={e=>upd('antiDelete',e.target.value)}><option value="off">Off</option><option value="inbox">Inbox</option><option value="group">Group</option><option value="all">All</option></select></Field>{s.antiDelete!=='off'&&(<Field label="Send To"><select className="inp" value={s.sendDeleteTo} onChange={e=>upd('sendDeleteTo',e.target.value)}><option value="owner">Owner</option><option value="same">Same Chat</option></select></Field>)}</div></Card></div>
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}><Card stripe="#a855f7" shadow="rgba(168,85,247,0.2)"><SectionTitle icon="bug" color="#c084fc" label={tx.antiBug} /><div style={{marginTop:14}}><div className="toggle-row"><span>Anti Bug Protection</span><Toggle value={s.antiBug} onChange={v=>upd('antiBug',v)} /></div><div className="validation-hint" style={{marginTop:8}}><span className="hint-text">Blocks known bug exploits</span></div></div></Card>
-    <Card stripe="#ec4899" shadow="rgba(236,72,153,0.2)"><SectionTitle icon="robot" color="#f472b6" label={tx.antiBot} /><div style={{marginTop:14}}><div className="toggle-row"><span>Anti Bot Filter</span><Toggle value={s.antiBot} onChange={v=>upd('antiBot',v)} /></div>{s.antiBot === 'on' && (<Field label="Action on Bot"><select className="inp" value={s.antiBotAction} onChange={e=>upd('antiBotAction',e.target.value)}><option value="delete">{tx.actionDelete}</option><option value="delete+kick">{tx.actionKick}</option></select></Field>)}<div className="validation-hint"><span className="hint-text">Auto detect & {s.antiBotAction==='delete'?'Delete message':'Delete + Kick user'}</span></div></div></Card></div>
-    <Card stripe="#22c55e" shadow="rgba(34,197,94,0.2)"><SectionTitle icon="clock" color="#4ade80" label={tx.group} /><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginTop:20}}><Field label="Group JID" style={{gridColumn:'1/-1'}}><input className="inp mono" placeholder="120363xxxxxxxx@g.us" value={s.gaGroupJid} onChange={e=>upd('gaGroupJid',e.target.value)} /></Field><Field label="Timezone"><select className="inp" value={s.gaTimezone} onChange={e=>upd('gaTimezone',e.target.value)}><option value="Asia/Colombo">Sri Lanka (UTC+5:30)</option><option value="Asia/Kolkata">India</option><option value="Asia/Dubai">UAE</option><option value="UTC">UTC</option></select></Field><Field label="Close Time"><input type="time" className="inp" value={s.gaCloseTime} onChange={e=>upd('gaCloseTime',e.target.value)} /></Field><Field label="Open Time"><input type="time" className="inp" value={s.gaOpenTime} onChange={e=>upd('gaOpenTime',e.target.value)} /></Field></div></Card>
-    </div></form></div><div style={{position:'fixed',bottom:28,right:28,zIndex:9999}}><button form="settingsForm" type="submit" disabled={loading} className="save-btn" style={loading?{opacity:0.65}:{}}>{loading?<><span className="spin"/>Saving…</>:<><Icon id="save" size={18}/>{tx.save}</>}</button></div></div></div>);
-}
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
-</script>
-<script src="https://pl28353289.profitablecpmratenetwork.com/c5/cf/40/c5cf409eb691bc551ab1f2b790da676d.js"></script>
-<script src="https://pl28854766.profitablecpmratenetwork.com/d3/7c/d1/d37cd119c5f308c460407f05318cdca6.js"></script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+    // فحص إذا كان المستخدم مسجل دخول مسبقاً
+    window.onload = () => {
+        const savedPhone = localStorage.getItem('bot_phone');
+        if(savedPhone) {
+            document.getElementById('phone').value = savedPhone;
+        }
+    };
+  </script>
 </body>
 </html>
