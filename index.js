@@ -1,89 +1,49 @@
+const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const express = require('express');
-const cors = require('cors');
-const Pino = require('pino');
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  fetchLatestBaileysVersion,
-  DisconnectReason,
-  makeCacheableSignalKeyStore,
-} = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
-const AUTH_DIR = path.join(__dirname, 'storage', 'baileys_auth');
-const logger = Pino({ level: 'silent' });
+const port = process.env.PORT || 10000;
 
-if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
-
-app.use(cors());
+app.use(express.static('public'));
 app.use(express.json());
-// تفعيل قراءة الملفات من مجلد public
-app.use(express.static(path.join(__dirname, 'public')));
 
-let sock = null;
+// قاعدة بيانات بسيطة لحفظ إعدادات كل رقم (يفضل استخدام MongoDB لاحقاً)
+const DB_PATH = './users_db.json';
+if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, JSON.stringify({}));
 
-async function startSocket() {
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  const { version } = await fetchLatestBaileysVersion();
-
-  sock = makeWASocket({
-    version,
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger),
-    },
-    logger,
-    browser: ["Ubuntu", "Chrome", "20.0.0"], 
-    printQRInTerminal: false,
-    markOnlineOnConnect: true,
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update;
-    if (connection === 'open') {
-      const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const welcomeMsg = `✅ *تم تفعيل البوت بنجاح!*\n\n⚙️ *رابط الإعدادات:* https://bot-eahg.onrender.com/settings.html\n🔑 *كلمة السر:* Fares-9900`;
-      await sock.sendMessage(userJid, { text: welcomeMsg });
-    }
-    if (connection === 'close') {
-      const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      if (statusCode !== DisconnectReason.loggedOut) startSocket();
-    }
-  });
-
-  // تفاعل تلقائي مع الحالات
-  sock.ev.on('messages.upsert', async (chatUpdate) => {
+// ميزة استخراج كود الربط والرد التلقائي
+sock.ev.on('messages.upsert', async (chatUpdate) => {
     const msg = chatUpdate.messages[0];
-    if (msg.key.remoteJid === 'status@broadcast') {
-      await sock.sendMessage('status@broadcast', { react: { text: '❤️', key: msg.key } }, { statusJidList: [msg.key.participant] });
+    if (!msg.message || msg.key.fromMe) return;
+
+    const remoteJid = msg.key.remoteJid;
+    const senderNumber = remoteJid.split('@')[0];
+    const body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+
+    if (body.trim() === ".bot") {
+        let db = JSON.parse(fs.readFileSync(DB_PATH));
+        
+        // إنشاء كلمة سر فريدة إذا لم تكن موجودة
+        if (!db[senderNumber]) {
+            db[senderNumber] = {
+                password: Math.random().toString(36).slice(-6).toUpperCase(), // كلمة سر من 6 رموز
+                settings: { emoji: "❤️", antiLink: false, antiCall: true }
+            };
+            fs.writeFileSync(DB_PATH, JSON.stringify(db));
+        }
+
+        const userPass = db[senderNumber].password;
+        const pairingCode = await sock.requestPairingCode(senderNumber);
+
+        const welcomeMsg = `👋 *مرحباً بك في بوت فارس*\n\n` +
+            `🔢 كود الربط: *${pairingCode}*\n` +
+            `🔐 كلمة مرور لوحة التحكم: *${userPass}*\n` +
+            `🔗 رابط الإعدادات الخاص بك:\n` +
+            `https://fares-bot-eahg.onrender.com/settings.html?num=${senderNumber}\n\n` +
+            `⚠️ لا تشارك كلمة السر مع أحد.`;
+
+        await sock.sendMessage(remoteJid, { text: welcomeMsg });
     }
-  });
-
-  return sock;
-}
-
-app.get('/api/pairing', async (req, res) => {
-  let number = req.query.number?.replace(/\D/g, '');
-  if (!number) return res.status(400).json({ status: false });
-  try {
-    if (!sock) await startSocket();
-    await new Promise(r => setTimeout(r, 5000));
-    const code = await sock.requestPairingCode(number);
-    res.json({ status: true, pairing_code: code });
-  } catch (err) { res.status(500).json({ status: false }); }
 });
 
-// روابط الصفحات لضمان عدم ظهور Not Found
-app.get('/settings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'settings.html')));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
-  startSocket();
-});
+app.listen(port, () => console.log(`Server is running on port ${port}`));
