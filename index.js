@@ -1,36 +1,47 @@
-const express = require('express');
+const { default: makeWASocket, useMultiFileAuthState, delay } = require("@whiskeysockets/baileys");
+const express = require("express");
+const pino = require("pino");
 const app = express();
-const path = require('path');
+const PORT = process.env.PORT || 10000;
 
-// --- إعدادات أساسية ---
-app.use(express.json());
-app.use(express.static('public')); // إذا كان لديك مجلد للموقع
+let sock;
 
-// --- الجزء الأهم: مسار جلب كود الربط للبوت ---
-app.get('/pairing', async (req, res) => {
-    const phoneNumber = req.query.number;
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('session');
     
-    if (!phoneNumber) {
-        return res.status(400).json({ error: "رقم الهاتف مطلوب" });
-    }
+    sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: false,
+        logger: pino({ level: "silent" }),
+    });
+
+    sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("connection.update", (update) => {
+        const { connection } = update;
+        if (connection === "close") connectToWhatsApp();
+        else if (connection === "open") console.log("✅ سيرفر الواتساب متصل!");
+    });
+}
+
+// المسار الذي سيطلبه البوت لجلب الكود
+app.get("/pairing", async (req, res) => {
+    let num = req.query.number;
+    if (!num) return res.status(400).json({ error: "الرقم مطلوب" });
 
     try {
-        // تنبيه: يجب أن يكون متغير 'conn' أو 'sock' هو المحرك الأساسي للواتساب في كودك
-        // هذه الدالة هي المسؤولة عن توليد الكود من مكتبة Baileys
-        if (global.conn) {
-            const code = await global.conn.getPairingCode(phoneNumber);
-            res.json({ code: code });
-        } else {
-            res.status(500).json({ error: "سيرفر الواتساب غير متصل حالياً" });
-        }
+        num = num.replace(/[^0-9]/g, '');
+        // طلب كود الربط من مكتبة Baileys
+        const code = await sock.getPairingCode(num);
+        res.json({ code: code });
     } catch (err) {
-        console.error("خطأ في توليد الكود:", err);
-        res.status(500).json({ error: "فشل في توليد الكود من السيرفر" });
+        res.status(500).json({ error: "فشل توليد الكود" });
     }
 });
 
-// --- تشغيل السيرفر على المنفذ المطلوب من Render ---
-const PORT = process.env.PORT || 8080;
+app.get("/", (req, res) => res.send("<h1>Golden Queen Server is Online!</h1>"));
+
 app.listen(PORT, () => {
     console.log(`الموقع يعمل على المنفذ: ${PORT}`);
+    connectToWhatsApp();
 });
