@@ -5,134 +5,146 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إعدادات سيرفر فارس</title>
     <style>
-        :root { --bg: #0d0d12; --card: #16161e; --gold: #d4a017; --text: #f0eaf5; }
+        :root { --bg: #0d0d12; --card: #16161e; --gold: #d4a017; --text: #f0eaf5; --danger: #e74c3c; --success: #2ecc71; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); direction: rtl; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .container { background: var(--card); width: 90%; max-width: 500px; padding: 25px; border-radius: 20px; border: 1px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .container { background: var(--card); width: 95%; max-width: 500px; padding: 25px; border-radius: 20px; border: 1px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
         /* شاشة اختيار اللغة */
         #lang-screen { text-align: center; }
-        .btn-lang { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid var(--gold); background: transparent; color: var(--gold); font-size: 1.2rem; cursor: pointer; }
-        
+        .btn-lang { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid var(--gold); background: transparent; color: var(--gold); font-size: 1.2rem; cursor: pointer; transition: 0.3s; }
+        .btn-lang:hover { background: var(--gold); color: #000; }
+
         /* شاشة الدخول */
         #login-screen { display: none; text-align: center; }
-        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: #fff; text-align: center; box-sizing: border-box; }
-        .btn-main { width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: #fff; text-align: center; box-sizing: border-box; outline: none; }
+        input:focus { border-color: var(--gold); }
+        .btn-main { width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
         /* شاشة الإعدادات */
-        #settings-screen { display: none; text-align: left; direction: ltr; font-family: monospace; font-size: 13px; max-height: 80vh; overflow-y: auto; padding: 10px; background: #0a0a0f; border-radius: 10px; }
-        .section-title { color: #ff85a1; font-weight: bold; margin-top: 15px; display: block; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .setting-item { margin: 8px 0; display: flex; justify-content: space-between; }
-        .val-on { color: #2ecc71; }
-        .val-off { color: #e74c3c; }
-        .val-set { color: #3498db; }
-        pre { white-space: pre-wrap; word-wrap: break-word; color: #f0eaf5; }
+        #settings-screen { display: none; text-align: right; }
+        .settings-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .scroll-area { max-height: 60vh; overflow-y: auto; background: #0a0a0f; padding: 15px; border-radius: 10px; border: 1px solid #222; }
+        
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
+        .setting-name { font-size: 14px; color: #bbb; }
+        
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 45px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(23px); }
+
+        .input-small { width: 80px; padding: 5px; margin: 0; font-size: 12px; }
+        .badge { background: #222; padding: 2px 8px; border-radius: 5px; font-size: 12px; color: var(--gold); }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div id="lang-screen">
-            <h2>Select Language / اختر اللغة</h2>
-            <button class="btn-lang" onclick="goToLogin('ar')">العربية</button>
-            <button class="btn-lang" onclick="goToLogin('en')">English</button>
+            <h2 style="color: var(--gold);">FARES BOT</h2>
+            <p>اختر لغة الواجهة / Select UI Language</p>
+            <button class="btn-lang" onclick="showLogin('ar')">العربية</button>
+            <button class="btn-lang" onclick="showLogin('en')">English</button>
         </div>
 
         <div id="login-screen">
             <h2 id="login-title">تسجيل الدخول</h2>
-            <input type="text" id="userNum" placeholder="الرقم المربوط">
+            <p id="login-desc" style="font-size: 13px; color: #888;">أدخل بياناتك للوصول للوحة التحكم</p>
+            <input type="text" id="userNum" placeholder="الرقم المربوط (مثل: 967...)">
             <input type="password" id="userPass" placeholder="كلمة السر">
-            <button class="btn-main" onclick="openSettings()">دخول / Login</button>
+            <button class="btn-main" onclick="handleLogin()">دخول / LOGIN</button>
         </div>
 
         <div id="settings-screen">
-            <pre>
-╭━━━━━━━━━━━❀━━━━━━━━━━━╮
-   ♡ FARES BOT SETTINGS ♡
-╰━━━━━━━━━━━❀━━━━━━━━━━━╯
+            <div class="settings-header">
+                <h3 id="panel-title">لوحة التحكم</h3>
+                <span id="active-num" class="badge"></span>
+            </div>
+            
+            <div class="scroll-area">
+                <div style="color: var(--gold); font-size: 12px; margin-bottom: 10px;">🛡️ الحماية / PROTECTION</div>
+                <div class="setting-row">
+                    <span class="setting-name">منع الروابط (Anti-Link)</span>
+                    <label class="switch"><input type="checkbox" id="antiLink"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-name">منع المكالمات (Anti-Call)</span>
+                    <label class="switch"><input type="checkbox" checked id="antiCall"><span class="slider"></span></label>
+                </div>
 
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-       💗 *USER INFO* 💗
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   🎀 *Name* » <span class="val-set">Fares Al-Tamimi</span>
-   📱 *Number* » <span id="displayNum"></span>
-   🎂 *Age* » <span class="val-set">20</span>
-   📍 *From* » <span class="val-set">Yemen</span>
-   🔤 *Prefix* » .
-   🌐 *Mode* » <span class="val-on">Public</span>
+                <div style="color: var(--gold); font-size: 12px; margin: 15px 0 10px;">📊 الحالات / STATUS</div>
+                <div class="setting-row">
+                    <span class="setting-name">مشاهدة الحالات تلقائياً</span>
+                    <label class="switch"><input type="checkbox" checked id="autoRead"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-name">تفاعل تلقائي (React)</span>
+                    <label class="switch"><input type="checkbox" checked id="autoReact"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-name">إيموجي التفاعل</span>
+                    <input type="text" class="input-small" value="❤️" id="reactEmoji">
+                </div>
 
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-      🛡️ *PROTECTION* 🛡️
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   🔗 Anti Link      » <span class="val-off">❌ OFF</span>
-   🤬 Anti Bad Words » <span class="val-on">✅ ON</span>
-   📞 Anti Call      » <span class="val-on">✅ ON</span>
-   ⛔ Auto Block     » <span class="val-off">❌ OFF</span>
-   🧭 Anti Bugs      » <span class="val-on">✅ ON</span>
-   🛸 Anti Bot       » <span class="val-off">❌ OFF</span>
-   ⚽ Anti Bot Action    » <span style="color:orange">💥 Delete</span>
+                <div style="color: var(--gold); font-size: 12px; margin: 15px 0 10px;">🤖 البوت / AUTOMATION</div>
+                <div class="setting-row">
+                    <span class="setting-name">متصل دائماً (Online)</span>
+                    <label class="switch"><input type="checkbox" checked id="alwaysOnline"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-name">وضع البوت (Public)</span>
+                    <label class="switch"><input type="checkbox" checked id="publicMode"><span class="slider"></span></label>
+                </div>
+            </div>
 
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-       🗑️ *DELETE LOGS* 🗑️
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   👀 Anti Delete    » <span class="val-on">✅ ON</span>
-   📤 Delete Send    » 📩 Sender
-
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-      📊 *STATUS SECTION* 📊
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   👁️ Status Read       » <span class="val-on">✅ ON</span>
-   ❤️ Status React      » <span class="val-on">✅ ON</span>
-   😉 Status Emoji      » <input type="text" value="❤️" style="width:30px; padding:2px; display:inline; margin:0;">
-   💬 Auto Save Contact » <span class="val-off">❌ OFF</span>
-   📝 Contact Send Msg  » 📋 Default
-   📤 Status Msg Send   » <span class="val-off">❌ OFF</span>
-
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-       🤖 *AUTOMATION* 🤖
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   🟢 Always Online      » <span class="val-on">✅ ON</span>
-   ⌨️ Auto Typing        » <span class="val-off">❌ OFF</span>
-   🎙️ Auto Recording     » <span class="val-off">❌ OFF</span>
-   👁️ Auto Read Msg      » <span class="val-on">✅ ON</span>
-   🔄 Auto Status React  » <span class="val-on">✅ ON</span>
-   👀 Auto Status Read   » <span class="val-on">✅ ON</span>
-
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-       ⚙️ *CONFIGS* ⚙️
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   💭 Custom Status  » <span class="val-set">Fares Bot is Active</span>
-   📵 Exclude Nums   » None
-
-┌─────── ⋆⋅☆⋅⋆ ──────────┐
-       🖼️ *MEDIA URLS* 🖼️
-└────────── ⋆⋅☆⋅⋆ ──────────┘
-   🎯 Alive Logo  » <span class="val-on">✅ Set</span>
-   🎨 Menu Logo   » <span class="val-on">✅ Set</span>
-   👑 Owner Logo  » <span class="val-on">✅ Set</span>
-            </pre>
-            <button class="btn-main" onclick="alert('تم حفظ الإعدادات بنجاح')">حفظ الإعدادات / SAVE</button>
+            <button class="btn-main" onclick="saveSettings()" style="background: var(--success);">حفظ التغييرات / SAVE</button>
         </div>
     </div>
 
     <script>
-        function goToLogin(lang) {
+        let currentLang = 'ar';
+
+        function showLogin(lang) {
+            currentLang = lang;
             document.getElementById('lang-screen').style.display = 'none';
             document.getElementById('login-screen').style.display = 'block';
-            if(lang === 'en') document.getElementById('login-title').innerText = "Login to Dashboard";
+            
+            if(lang === 'en') {
+                document.getElementById('login-title').innerText = "Login to Dashboard";
+                document.getElementById('login-desc').innerText = "Enter your credentials to continue";
+                document.getElementById('userNum').placeholder = "Linked Number";
+                document.getElementById('userPass').placeholder = "Password";
+                document.querySelector('#login-screen .btn-main').innerText = "LOGIN";
+            }
         }
 
-        function openSettings() {
+        function handleLogin() {
             const num = document.getElementById('userNum').value;
             const pass = document.getElementById('userPass').value;
-            if(num && pass) {
+
+            // التحقق من كلمة السر (الموجودة في كود السيرفر Fares-9900)
+            if(num.length > 8 && pass === 'Fares-9900') {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('settings-screen').style.display = 'block';
-                document.getElementById('displayNum').innerText = num;
+                document.getElementById('active-num').innerText = num;
+                
+                if(currentLang === 'en') {
+                    document.getElementById('panel-title').innerText = "Bot Dashboard";
+                    document.querySelector('#settings-screen .btn-main').innerText = "SAVE CHANGES";
+                    // يمكنك إضافة ترجمة بقية العناصر هنا
+                }
             } else {
-                alert("يرجى إدخال البيانات كاملة");
+                alert(currentLang === 'ar' ? "بيانات الدخول غير صحيحة!" : "Invalid Credentials!");
             }
+        }
+
+        function saveSettings() {
+            // هنا يتم إرسال الإعدادات للسيرفر مستقبلاً
+            alert(currentLang === 'ar' ? "تم حفظ الإعدادات بنجاح ✅" : "Settings Saved Successfully ✅");
         }
     </script>
 </body>
 </html>
-
