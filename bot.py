@@ -5,9 +5,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- إعدادات السيرفر والتوكن ---
+BASE_URL = "http://127.0.0.1:10000"
 BOT_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I"
-# ملاحظة: سنستخدمlocalhost لأننا سنشغل السيرفرين في نفس الخدمة
-NODE_SERVER_URL = "http://127.0.0.1:10000" 
 
 app_web = Flask('')
 
