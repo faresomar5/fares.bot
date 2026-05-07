@@ -1,87 +1,69 @@
-import os
-import threading
-import asyncio
 import httpx
-from flask import Flask, request, jsonify
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- الإعدادات ---
-# استخدم التوكن الجديد الذي استخرجته من BotFather
+# التوكن الجديد الخاص بك
 BOT_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I"
-# الربط داخلي تماماً لضمان السرعة
-NODE_SERVER_URL = "http://127.0.0.1:10000"
+# رابط موقعك على Render
+BASE_URL = "https://fares-bot-eahg.onrender.com"
 
-# --- سيرفر Flask لمنع توقف Render ---
-app_web = Flask('')
-
-@app_web.route('/')
-def home():
-    return "<h1>سيرفر فارس يعمل بنجاح</h1>"
-
-def run_flask():
-    # Render يطلب العمل على المنفذ 8080 أو المنفذ المحدد في البيئة
-    port = int(os.environ.get('PORT', 8080))
-    app_web.run(host='0.0.0.0', port=port)
-
-# --- دالة طلب الكود من Node.js ---
+# --- دالة جلب الكود من الموقع ---
 async def get_pairing_code(phone):
-    url = f"{NODE_SERVER_URL}/pairing?number={phone}"
+    # تنظيف الرقم من أي مسافات أو رموز
+    clean_phone = phone.replace('+', '').replace(' ', '')
+    url = f"{BASE_URL}/pairing?number={clean_phone}"
+    
     async with httpx.AsyncClient() as client:
         try:
-            # زيادة مهلة الانتظار لـ 90 ثانية لمنع التعليق
-            response = await client.get(url, timeout=90.0)
+            # مهلة انتظار 60 ثانية لأن الموقع قد يكون في وضع الاستراحة (Sleep)
+            response = await client.get(url, timeout=60.0)
             if response.status_code == 200:
                 data = response.json()
                 return data.get('code')
         except Exception as e:
-            print(f"خطأ أثناء طلب الكود: {e}")
+            print(f"خطأ في الاتصال بالموقع: {e}")
     return None
 
-# --- مهام البوت ---
+# --- أوامر البوت ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🔗 ربط واتساب", callback_data='register')]]
+    keyboard = [[InlineKeyboardButton("🔗 ربط الواتساب الآن", callback_data='get_code')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "مرحباً بك في بوت الربط الخاص بفارس 👑\nاضغط على الزر أدناه للبدء:",
+        "مرحباً بك في بوت فارس 👑\nأرسل رقمك للحصول على كود الربط مباشرة من الموقع.",
         reply_markup=reply_markup
     )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    if query.data == 'register':
-        context.user_data['step'] = 'WAITING_PHONE'
-        await query.edit_message_text("الآن أرسل رقم الواتساب مع رمز الدولة (مثال: 967771163825):")
+    if query.data == 'get_code':
+        context.user_data['waiting_phone'] = True
+        await query.edit_message_text("أرسل الآن رقم الواتساب مع رمز الدولة (مثال: 967771163825):")
 
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.user_data.get('step') == 'WAITING_PHONE':
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('waiting_phone'):
         phone = update.message.text.strip()
-        msg = await update.message.reply_text("⏳ جاري طلب كود الربط من سيرفر واتساب، يرجى الانتظار...")
+        msg = await update.message.reply_text("⏳ جاري التواصل مع الموقع وتوليد الكود...")
         
-        # استدعاء الدالة
+        # طلب الكود من الرابط الخارجي
         code = await get_pairing_code(phone)
         
         if code:
-            await msg.edit_text(f"✅ تم توليد الكود بنجاح:\n\n`{code}`", parse_mode='Markdown')
+            await msg.edit_text(f"✅ كود الربط الخاص بك هو:\n\n`{code}`", parse_mode='Markdown')
         else:
-            await msg.edit_text("❌ عذراً، تعذر توليد الكود حالياً. تأكد أن السيرفر Live وحاول مجدداً.")
+            await msg.edit_text("❌ الموقع لا يستجيب حالياً. تأكد أن رابط Render يعمل بشكل صحيح.")
         
-        context.user_data['step'] = None
+        context.user_data['waiting_phone'] = False
 
-# --- تشغيل البوت ---
 def main():
-    # تشغيل سيرفر الويب في خلفية منفصلة
-    threading.Thread(target=run_flask, daemon=True).start()
-    
-    # بناء تطبيق تليجرام
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    application.add_handler(CallbackQueryHandler(handle_button))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("البوت بدأ العمل...")
+    print("البوت شغال ومرتبط بالموقع...")
     application.run_polling()
 
 if __name__ == '__main__':
