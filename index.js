@@ -1,117 +1,65 @@
-require('dotenv').config();
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    DisconnectReason,
-    Browsers,
-    makeCacheableSignalKeyStore
-} = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, delay, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 const express = require('express');
 const pino = require('pino');
-const path = require('path');
-const cors = require('cors');
-const fs = require('fs-extra');
-const axios = require('axios');
-
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+const port = process.env.PORT || 8080;
 
-const PORT = process.env.PORT || 3000;
-const SESSION_DIR = './session';
+// --- إعداد واجهة الويب (Dashboard) ---
+app.get('/', (req, res) => {
+    res.send(`
+        <div style="text-align:center; margin-top:50px; font-family:Arial;">
+            <h1 style="color:#25D366;">WhatsApp Bot Panel</h1>
+            <p>البوت شغال الآن بنجاح على السيرفر!</p>
+            <p>للحصول على كود الربط، ابحث في سجلات (Logs) موقع Render.</p>
+            <div style="background:#f0f0f0; padding:20px; display:inline-block; border-radius:10px;">
+                <strong>حالة البوت:</strong> <span style="color:green;">متصل بالسيرفر ✅</span>
+            </div>
+        </div>
+    `);
+});
 
-let sock;
-let statusEmoji = '💤'; 
+app.listen(port, () => console.log(`لوحة التحكم تعمل على المنفذ ${port}`));
 
-async function startFaresBot(clearSession = false) {
-    if (clearSession && fs.existsSync(SESSION_DIR)) {
-        await fs.emptyDir(SESSION_DIR);
-    }
-
-    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+// --- إعداد البوت (WhatsApp Logic) ---
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
 
-    sock = makeWASocket({
+    const sock = makeWASocket({
         version,
-        auth: {
-            creds: state.creds,
-            // استخدام التخزين المؤقت للمفاتيح لضمان عدم فصل الرقم
-            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
-        },
-        logger: pino({ level: 'silent' }),
-        printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome'), // محاكاة متصفح مستقر
-        markOnlineOnConnect: true,
+        auth: state,
+        printQRInTerminal: true,
+        logger: pino({ level: "silent" })
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // كود الحفاظ على نشاط السيرفر 24 ساعة ومنع الخمول
-    setInterval(() => {
-        axios.get(`https://fares-bot-eahg.onrender.com`).catch(() => {});
-    }, 4 * 60 * 1000); 
+    // نظام مشاهدة الحالات مع الحماية
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const msg = messages[0];
+        if (!msg.message) return;
 
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startFaresBot();
+        if (msg.key.remoteJid === 'status@broadcast') {
+            const sender = msg.key.participant || msg.key.remoteJid;
+            
+            // نظام حماية: انتظار عشوائي بين 7 إلى 15 ثانية (عشان ما ينحظر الرقم)
+            const waitTime = Math.floor(Math.random() * (15000 - 7000 + 1)) + 7000;
+            await delay(waitTime);
+
+            await sock.readMessages([msg.key]);
+            console.log(`✅ تمت مشاهدة حالة من: ${sender} (بعد انتظار ${waitTime/1000} ثانية)`);
         }
     });
 
-    // نظام التفاعل التلقائي مع الحالات (مشاهدة + إيموجي)
-    sock.ev.on('messages.upsert', async (chatUpdate) => {
-        try {
-            const mek = chatUpdate.messages[0];
-            if (!mek.message || mek.key.fromMe) return;
-
-            const from = mek.key.remoteJid;
-            const participant = mek.key.participant || mek.key.remoteJid;
-
-            if (from === 'status@broadcast') {
-                await sock.readMessages([mek.key]);
-                await sock.sendMessage(from, { 
-                    react: { text: statusEmoji, key: mek.key } 
-                }, { statusJidList: [participant] });
-                return;
-            }
-
-            const body = (mek.message.conversation || mek.message.extendedTextMessage?.text || "").toLowerCase().trim();
-
-            if (body === 'الاوامر') {
-                const menu = `👑 *أوامر بوت الملك فارس* 👑\n\n` +
-                             `• *فارس*: ترحيب الملك.\n` +
-                             `• *تنشيط*: إعادة الاتصال.\n` +
-                             `• *ايموجي [الشكل]*: تغيير تفاعل الحالة.`;
-                await sock.sendMessage(from, { text: menu });
-            }
-
-        } catch (err) { console.error(err); }
+    sock.ev.on('connection.update', (update) => {
+        const { connection } = update;
+        if (connection === 'close') {
+            console.log("إعادة الاتصال...");
+            startBot();
+        } else if (connection === 'open') {
+            console.log("✅ البوت متصل الآن بالواتساب!");
+        }
     });
-
-    return sock;
 }
 
-// الربط مع المسار المطلوب ليكون متوافقاً مع الموقع المذكور
-app.post('/api/pairing', async (req, res) => {
-    let num = req.body.num;
-    if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
-    num = num.replace(/[^0-9]/g, '');
-
-    try {
-        await startFaresBot(true);
-        // وقت انتظار لضمان استقرار الجلسة قبل توليد الكود
-        await new Promise(r => setTimeout(r, 6000));
-        const code = await sock.requestPairingCode(num);
-        res.json({ success: true, code });
-    } catch (err) {
-        res.status(500).json({ error: 'فشل استخراج الكود، حاول مجدداً' });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`✅ السيرفر يعمل ومربوط بالـ API بنجاح`);
-    startFaresBot();
-});
+startBot();
