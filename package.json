@@ -1,7 +1,6 @@
 {
-  "name": "fares-bot-official",
+  "name": "fares-bot",
   "version": "1.0.0",
-  "description": "WhatsApp Bot for King Fares with Auto Status React",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -14,8 +13,5 @@
     "pino": "^9.3.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5"
-  },
-  "engines": {
-    "node": ">=16.0.0"
   }
 }
