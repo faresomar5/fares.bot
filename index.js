@@ -13,6 +13,7 @@ const cors = require('cors');
 const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
+const { exec } = require('child_process');
 
 const app = express();
 app.use(cors());
@@ -26,10 +27,19 @@ const MY_URL = 'https://fares-bot-eahg.onrender.com';
 let sock;
 let statusEmoji = '👑'; 
 
+// تشغيل بوت التليجرام تلقائياً
+function startTelegramBot() {
+    exec('python3 bot.py', (err, stdout, stderr) => {
+        if (err) { console.error("❌ خطأ في بوت التليجرام:", err); return; }
+        console.log("✅ بوت التليجرام يعمل...");
+    });
+}
+
+// نبض السيرفر (كل دقيقة) لمنع Render من النوم
 function keepAlive() {
     setInterval(() => {
-        axios.get(MY_URL).catch(() => {});
-    }, 3 * 60 * 1000); 
+        axios.get(MY_URL).then(() => console.log('⚡ نبض النشاط: مستمر')).catch(() => {});
+    }, 60 * 1000); 
 }
 
 async function startFaresBot(clear = false) {
@@ -46,7 +56,9 @@ async function startFaresBot(clear = false) {
         printQRInTerminal: false,
         browser: Browsers.ubuntu('Chrome'),
         syncFullHistory: false,
-        markOnlineOnConnect: true
+        markOnlineOnConnect: true,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 0,
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -55,9 +67,12 @@ async function startFaresBot(clear = false) {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) setTimeout(() => startFaresBot(), 5000);
+            if (shouldReconnect) {
+                console.log('🔄 انقطع الاتصال، جاري إعادة الربط...');
+                setTimeout(() => startFaresBot(), 3000);
+            }
         }
-        console.log('📡 حالة الاتصال:', connection);
+        console.log('📡 الحالة:', connection);
     });
 
     sock.ev.on('messages.upsert', async (chatUpdate) => {
@@ -66,70 +81,41 @@ async function startFaresBot(clear = false) {
             if (!mek || !mek.message) return;
             const from = mek.key.remoteJid;
 
-            // نظام التفاعل المطور مع الحالات
             if (from === 'status@broadcast') {
-                // 1. إرسال إشارة المشاهدة
                 await sock.readMessages([mek.key]);
-                
-                // 2. انتظار بسيط لضمان استقرار الطلب
-                await delay(2000);
-
-                // 3. إرسال التفاعل بالإيموجي مع تحديد مفتاح الرسالة بدقة
+                await delay(2500); // تأخير بسيط لضمان قبول الإعجاب
                 await sock.sendMessage(from, { 
-                    react: { 
-                        key: mek.key, 
-                        text: statusEmoji 
-                    } 
+                    react: { key: mek.key, text: statusEmoji } 
                 }, { 
                     statusJidList: [mek.key.participant] 
                 });
-                
-                console.log(`✅ تم التفاعل بنجاح على حالة من: ${mek.key.participant}`);
                 return;
             }
 
             const body = mek.message.conversation || mek.message.extendedTextMessage?.text || "";
-            
             if (body.startsWith('ايموجي ')) {
-                const em = body.split(' ')[1];
-                if (em) {
-                    statusEmoji = em;
-                    await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي التفاعل إلى: ${statusEmoji}` }, { quoted: mek });
-                }
+                statusEmoji = body.split(' ')[1] || '👑';
+                await sock.sendMessage(from, { text: `✅ تم ضبط الإيموجي على: ${statusEmoji}` });
             }
-
-            if (body.toLowerCase() === 'فحص') {
-                await sock.sendMessage(from, { text: '🚀 البوت متصل ويقوم بمراقبة الحالات للتفاعل!' }, { quoted: mek });
-            }
-        } catch (e) {
-            console.error('Error handling status:', e);
-        }
+        } catch (e) { console.error(e); }
     });
 }
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('/', (req, res) => res.send('Fares Bot Online 24/7'));
 
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'num required' });
     try {
         await startFaresBot(true);
-        await new Promise(r => setTimeout(r, 7000));
+        await delay(8000);
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
     } catch (err) { res.status(500).json({ error: 'fail' }); }
 });
 
 app.listen(PORT, () => {
-    console.log('Server is active');
     startFaresBot();
+    startTelegramBot();
     keepAlive();
 });
-const { exec } = require('child_process');
-exec('python3 bot.py', (err, stdout, stderr) => {
-    if (err) { console.error("Telegram Bot Error:", err); return; }
-    print(stdout);
-});
-
