@@ -15,7 +15,7 @@ const port = process.env.PORT || 10000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// إعداد الذكاء الاصطناعي بمفتاحك الخاص
+// تهيئة الذكاء الاصطناعي بمفتاحك الخاص
 const genAI = new GoogleGenerativeAI("AIzaSyBklT9MOcHID87Fnb86Xz0F551v9Vw_P-k");
 
 let sock;
@@ -23,13 +23,13 @@ let sock;
 let settings = {
     alwaysOnline: true,
     antiLink: false,
-    aiChat: true, // تفعيل الذكاء الاصطناعي
+    aiChat: true, 
     statusReact: true,
     statusEmoji: "👑",
     replies: []
 };
 
-// --- واجهة المستخدم (الظاهرة في المتصفح) ---
+// --- واجهة المستخدم (لوحة التحكم) ---
 app.get('/', (req, res) => {
     res.send(`
 <!DOCTYPE html>
@@ -56,18 +56,16 @@ app.get('/', (req, res) => {
         
         <div class="card">
             <div class="item"><span>الحالة الآن:</span> <span class="status">متصل بالسيرفر ✅</span></div>
-            <div class="item"><span>إبقاء الرقم متصل</span> <input type="checkbox" checked disabled></div>
             <div class="item"><span>مكافحة الروابط (Anti-Link)</span> <input type="checkbox" id="antiLink" ${settings.antiLink ? 'checked' : ''} onchange="update('antiLink')"></div>
             <div class="item"><span>الذكاء الاصطناعي (AI)</span> <input type="checkbox" id="ai" ${settings.aiChat ? 'checked' : ''} onchange="update('aiChat')"></div>
         </div>
 
         <div class="card">
-            <div class="item"><span>تفاعل الحالات</span> <input type="checkbox" checked disabled></div>
             <div class="item"><span>إيموجي التفاعل</span> <input type="text" id="emoji" value="${settings.statusEmoji}" onchange="updateEmoji()"></div>
         </div>
 
         <div class="card">
-            <span style="color:var(--gold)">إضافة رد تلقائي (1-100)</span>
+            <span style="color:var(--gold)">إضافة رد تلقائي</span>
             <div style="display:flex; gap:5px; margin-top:10px;">
                 <input type="text" id="key" placeholder="الكلمة" style="flex:1">
                 <input type="text" id="val" placeholder="الرد" style="flex:1">
@@ -101,37 +99,43 @@ app.get('/', (req, res) => {
     `);
 });
 
-// --- أوامر الـ API للتحكم من المتصفح ---
+// --- أوامر الـ API ---
 app.post('/api/update', (req, res) => { settings[req.body.key] = !settings[req.body.key]; res.json({success: true}); });
 app.post('/api/emoji', (req, res) => { settings.statusEmoji = req.body.val; res.json({success: true}); });
 app.post('/api/reply', (req, res) => { settings.replies.push({k: req.body.k, v: req.body.v}); res.json({success: true}); });
 
-// --- واجهة استلام كود الربط ---
+// --- نظام الربط المطور لمعالجة خطأ 428 ---
 app.post('/pair', async (req, res) => {
     let num = req.body.number.replace(/[^0-9]/g, '');
-    if (!num) return res.send("الرجاء إدخال الرقم بشكل صحيح مع مفتاح الدولة");
-    
-    // إعادة تشغيل البوت للرقم الجديد
-    if (fs.existsSync('./auth_info')) fs.removeSync('./auth_info');
-    await startBot();
+    if (!num) return res.send("الرجاء إدخال الرقم بشكل صحيح");
     
     try {
-        const code = await sock.requestPairingCode(num);
-        res.send(`
-        <body style="background:#020617; color:white; text-align:center; padding-top:100px; font-family:sans-serif;">
-            <h2 style="color:#94a3b8;">كود الربط الخاص بالرقم ${num} هو:</h2>
-            <h1 style="color:#d4a017; font-size:60px; letter-spacing:10px;">${code}</h1>
-            <p>قم بوضع الكود في إشعارات الواتساب بجوالك الآن.</p>
-            <br><a href="/" style="color:#d4a017; text-decoration:none;">← العودة للوحة التحكم</a>
-        </body>`);
+        if (fs.existsSync('./auth_info')) fs.removeSync('./auth_info');
+        await startBot();
+        
+        // انتظار 7 ثوانٍ لضمان استقرار الاتصال قبل طلب الكود وتجنب Connection Closed
+        await new Promise(resolve => setTimeout(resolve, 7000));
+
+        if (sock) {
+            const code = await sock.requestPairingCode(num);
+            res.send(`
+            <body style="background:#020617; color:white; text-align:center; padding-top:100px; font-family:sans-serif;">
+                <h2 style="color:#94a3b8;">كود الربط للرقم ${num}:</h2>
+                <h1 style="color:#d4a017; font-size:60px; letter-spacing:10px;">${code}</h1>
+                <p>أدخل الكود في جوالك الآن.</p>
+                <br><a href="/" style="color:#d4a017; text-decoration:none;">← العودة للوحة التحكم</a>
+            </body>`);
+        } else {
+            res.send("السيرفر يحتاج لوقت أطول، يرجى تحديث الصفحة والمحاولة مجدداً.");
+        }
     } catch (e) {
-        res.send("حدث خطأ في طلب الكود، يرجى المحاولة لاحقاً.");
+        res.send("فشل في استخراج الكود، تأكد من اتصال السيرفر.");
     }
 });
 
-app.listen(port, () => console.log(`Dashboard and Pairing System is live!`));
+app.listen(port, () => console.log(`لوحة التحكم جاهزة على المنفذ ${port}`));
 
-// --- محرك البوت الذكي ---
+// --- محرك البوت ---
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
@@ -146,11 +150,11 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
     sock.ev.on('connection.update', (u) => { 
-        if (u.connection === 'open') {
-            sock.sendPresenceUpdate('available');
-            console.log("✅ البوت متصل الآن!");
+        if (u.connection === 'open') sock.sendPresenceUpdate('available');
+        if (u.connection === 'close') {
+            const shouldReconnect = u.lastDisconnect?.error?.output?.statusCode !== DisconnectionReason.loggedOut;
+            if (shouldReconnect) startBot();
         }
-        if (u.connection === 'close') startBot(); 
     });
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
@@ -158,35 +162,28 @@ async function startBot() {
         const from = msg.key.remoteJid;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
-        // 1. تفاعل وحفظ الحالة
         if (from === 'status@broadcast') {
             await delay(7000); await sock.readMessages([msg.key]);
             await sock.sendMessage(from, { react: { text: settings.statusEmoji, key: msg.key } }, { statusJidList: [msg.key.participant] });
             return;
         }
 
-        // 2. مسح الروابط (Anti-Link)
         if (settings.antiLink && text.includes("http")) {
-            await sock.sendMessage(from, { text: "⚠️ تم كشف رابط! سيتم حذف الدردشة الآن." });
+            await sock.sendMessage(from, { text: "⚠️ ممنوع إرسال الروابط!" });
             await sock.chatModify({ delete: true, lastMessages: [{ key: msg.key, messageTimestamp: msg.messageTimestamp }] }, from);
             return;
         }
 
-        // 3. الردود التلقائية
         settings.replies.forEach(async r => {
             if (text.toLowerCase() === r.k.toLowerCase()) await sock.sendMessage(from, { text: r.v });
         });
 
-        // 4. الذكاء الاصطناعي (Gemini AI)
         if (settings.aiChat) {
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
                 const result = await model.generateContent(text);
-                const aiReply = result.response.text();
-                await sock.sendMessage(from, { text: aiReply });
-            } catch (err) {
-                console.error("AI Error");
-            }
+                await sock.sendMessage(from, { text: result.response.text() });
+            } catch (err) { console.error("AI Error"); }
         }
     });
 }
