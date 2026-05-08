@@ -1,110 +1,59 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>👑 بوت الملك فارس</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>بوابة ربط بوت الملك فارس 👑</title>
     <style>
-        :root {
-            --bg: #0d0d12;
-            --card: #1a1a27;
-            --gold: #d4a055;
-            --text: #f0eaf5;
-            --muted: #8a849a;
-            --border-accent: rgba(212,160,85,0.35);
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container { max-width: 440px; width: 90%; margin-top: 50px; }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border-accent);
-            padding: 30px;
-            border-radius: 24px;
-            text-align: center;
-        }
-        input {
-            width: 100%;
-            padding: 15px;
-            margin-top: 20px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: white;
-            text-align: center;
-        }
-        .btn {
-            width: 100%;
-            padding: 15px;
-            margin-top: 20px;
-            background: linear-gradient(135deg, var(--gold), #b8853a);
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        header h1 { margin-bottom: 10px; font-family: 'Playfair Display', serif; }
-        footer { margin-top: auto; padding: 20px; color: var(--muted); font-size: 0.8rem; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
+        h1 { color: #075e54; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: center; }
+        button { background-color: #25d366; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; transition: 0.3s; }
+        button:hover { background-color: #128c7e; }
+        #result { margin-top: 20px; font-weight: bold; color: #333; padding: 15px; border-radius: 8px; display: none; background: #e7f3ef; border: 1px solid #25d366; }
+        .loading { display: none; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <header style="text-align: center; margin-bottom: 30px;">
-            <h1>👑 بوت الملك <span style="color: var(--gold);">فارس</span></h1>
-            <p style="color: var(--muted);">بوابة ربط الأجهزة الآمنة</p>
-        </header>
-
-        <div class="card">
-            <label>أدخل رقم الواتساب مع رمز الدولة</label>
-            <input type="text" id="phoneNum" placeholder="967XXXXXXXX">
-            <button class="btn" onclick="getPairingCode()">الحصول على كود الربط</button>
-        </div>
+        <h1>👑 بوت الملك فارس</h1>
+        <p>أدخل رقمك مع مفتاح الدولة (بدون +)</p>
+        <input type="text" id="phoneNumber" placeholder="مثال: 967xxxxxxxxx">
+        <button onclick="getPairingCode()">استخراج كود الربط 🚀</button>
+        <div id="loading" class="loading">⏳ جاري استخراج الكود، يرجى الانتظار...</div>
+        <div id="result"></div>
     </div>
 
-    <footer>
-        <p>© 2026 بوت الملك فارس - جميع الحقوق محفوظة</p>
-    </footer>
-
     <script>
-        // الرابط الذي طلبته
-        const API_BASE = "https://fares-bot-eahg.onrender.com";
-
         async function getPairingCode() {
-            const num = document.getElementById('phoneNum').value.replace(/\D/g, '');
-            if (!num) return Swal.fire('خطأ', 'يرجى إدخال الرقم أولاً', 'error');
+            const num = document.getElementById('phoneNumber').value;
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
 
-            Swal.fire({ title: 'جاري استخراج الكود...', didOpen: () => Swal.showLoading() });
+            if (!num) return alert('يرجى إدخال الرقم أولاً');
+
+            resultDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
 
             try {
-                const response = await fetch(`${API_BASE}/api/pairing`, {
+                const response = await fetch('/api/pairing', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ num })
+                    body: JSON.stringify({ num: num })
                 });
                 const data = await response.json();
 
-                if (data.code) {
-                    Swal.fire({
-                        title: 'كود الربط الخاص بك',
-                        html: `<h1 style="color:#d4a055; font-size: 3rem;">${data.code}</h1>`,
-                        icon: 'success'
-                    });
+                loadingDiv.style.display = 'none';
+                if (data.success) {
+                    resultDiv.innerHTML = `✅ كود الربط الخاص بك هو:<br><span style="font-size: 24px; color: #075e54;">${data.code}</span>`;
+                    resultDiv.style.display = 'block';
                 } else {
-                    throw new Error(data.error || 'حدث خطأ ما');
+                    alert('حدث خطأ: ' + (data.error || 'حاول مجدداً'));
                 }
             } catch (error) {
-                Swal.fire('فشل', error.message, 'error');
+                loadingDiv.style.display = 'none';
+                alert('فشل الاتصال بالسيرفر');
             }
         }
     </script>
