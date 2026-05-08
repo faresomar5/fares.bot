@@ -7,18 +7,22 @@ API_URL = "https://fares-bot-eahg.onrender.com/api/pairing"
 bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "أرسل رقم هاتفك مع رمز الدولة للحصول على كود الربط.")
+def start(message):
+    bot.reply_to(message, "أرسل رقم هاتفك الآن (بصيغة 967xxx):")
 
 @bot.message_handler(func=lambda message: True)
 def get_code(message):
-    number = message.text.strip()
-    bot.reply_to(message, "⏳ جاري طلب الكود...")
+    num = message.text.strip()
+    msg = bot.reply_to(message, "⏳ جاري طلب الكود من السيرفر...")
     try:
-        response = requests.post(API_URL, json={"num": number})
-        data = response.json()
-        bot.send_message(message.chat.id, f"🔢 كود الربط الخاص بك هو: {data['code']}")
-    except:
-        bot.send_message(message.chat.id, "❌ حدث خطأ، تأكد من تشغيل السيرفر.")
+        # زيادة وقت الانتظار لـ 30 ثانية لضمان استجابة Render
+        res = requests.post(API_URL, json={"num": num}, timeout=30)
+        data = res.json()
+        if 'code' in data:
+            bot.edit_message_text(f"🔢 كود الربط: `{data['code']}`", message.chat.id, msg.message_id, parse_mode="Markdown")
+        else:
+            bot.edit_message_text("❌ السيرفر رد ببيانات خاطئة، حاول مرة أخرى.", message.chat.id, msg.message_id)
+    except Exception as e:
+        bot.edit_message_text(f"❌ فشل الاتصال بالسيرفر. تأكد أن موقع Render شغال.\nالخطأ: {str(e)}", message.chat.id, msg.message_id)
 
-bot.polling()
+bot.polling(none_stop=True)
