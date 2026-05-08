@@ -23,8 +23,9 @@ const SESSION_DIR = './session';
 const MY_URL = 'https://fares-bot-eahg.onrender.com';
 
 let sock;
-let statusEmoji = '👑'; // الإيموجي الذي سيظهر على كل أنواع الاستوريات
+let statusEmoji = '👑'; 
 
+// تنشيط السيرفر لمنع النوم
 function keepAlive() {
     setInterval(() => {
         axios.get(MY_URL).catch(() => {});
@@ -56,36 +57,62 @@ async function startFaresBot(clear = false) {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) setTimeout(() => startFaresBot(), 5000);
         }
+        console.log('📡 حالة الاتصال:', connection);
     });
 
-    // ⚡ محرك التفاعل الشامل مع كافة أنواع الاستوريات
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
-            if (!mek.message) return;
+            if (!mek || !mek.message) return;
             const from = mek.key.remoteJid;
 
-            // التفاعل مع أي استوري (نص، صورة، فيديو، إلخ)
+            // التفاعل مع كافة أنواع الاستوريات (نص، صور، فيديو)
             if (from === 'status@broadcast') {
-                // مشاهدة الاستوري أولاً
                 await sock.readMessages([mek.key]);
-                
-                // التفاعل بالإيموجي (سيعمل مع الكل تلقائياً)
                 await sock.sendMessage(from, { 
-                    react: { 
-                        key: mek.key, 
-                        text: statusEmoji 
-                    } 
+                    react: { key: mek.key, text: statusEmoji } 
                 }, { 
                     statusJidList: [mek.key.participant] 
                 });
-                
                 return;
             }
 
-            // أوامر التحكم (عبر هاتفك المربوط)
             const body = mek.message.conversation || mek.message.extendedTextMessage?.text || "";
             
-            // تغيير الإيموجي: اكتب "ايموجي ❤️"
             if (body.startsWith('ايموجي ')) {
-                const new
+                const em = body.split(' ')[1];
+                if (em) {
+                    statusEmoji = em;
+                    await sock.sendMessage(from, { text: `✅ تم تحديث الإيموجي إلى: ${statusEmoji}` }, { quoted: mek });
+                }
+            }
+
+            if (body.toLowerCase() === 'فحص') {
+                await sock.sendMessage(from, { text: '🚀 البوت شغال تمام وبدون أخطاء!' }, { quoted: mek });
+            }
+        } catch (e) {
+            console.error('Error:', e);
+        }
+    });
+}
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.post('/api/pairing', async (req, res) => {
+    const num = req.body.num;
+    if (!num) return res.status(400).json({ error: 'num required' });
+    try {
+        await startFaresBot(true);
+        await new Promise(r => setTimeout(r, 7000));
+        const code = await sock.requestPairingCode(num);
+        res.json({ success: true, code });
+    } catch (err) { res.status(500).json({ error: 'fail' }); }
+});
+
+app.listen(PORT, () => {
+    console.log('Server is active');
+    startFaresBot();
+    keepAlive();
+});
