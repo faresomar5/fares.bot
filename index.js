@@ -21,9 +21,9 @@ const PORT = process.env.PORT || 3000;
 const SESSION_DIR = './session';
 
 let sock;
+let statusEmoji = '👑'; 
 
 async function startFaresBot(clearSession = false) {
-    // مسح الجلسة فقط عند طلب كود ربط جديد لضمان عدم حدوث تعارض
     if (clearSession && fs.existsSync(SESSION_DIR)) {
         await fs.emptyDir(SESSION_DIR);
     }
@@ -36,8 +36,8 @@ async function startFaresBot(clearSession = false) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        // تعريف المتصفح الأكثر استقراراً لضمان وصول الإشعارات
-        browser: Browsers.ubuntu('Chrome'), 
+        browser: Browsers.ubuntu('Chrome'), // ضروري جداً لظهور الإشعارات
+        getMessage: async (key) => { return { conversation: '' } } // لتحسين استجابة البوت
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -48,81 +48,65 @@ async function startFaresBot(clearSession = false) {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startFaresBot();
         }
-        console.log('حالة البوت حالياً:', connection);
+        console.log('حالة الاتصال:', connection);
     });
 
-    // --- قسم الأوامر التلقائي (هنا تضيف أي أمر جديد مستقبلاً) ---
+    // --- المحرك المطور لاستقبال الرسائل والتفاعل ---
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
             if (!mek.message) return;
 
             const from = mek.key.remoteJid;
-            // استخراج النص من أنواع الرسائل المختلفة
-            const body = mek.message.conversation || 
-                         mek.message.extendedTextMessage?.text || 
-                         mek.message.imageMessage?.caption || "";
 
-            const command = body.toLowerCase().trim();
-
-            // 1. أمر فحص البوت
-            if (command === 'فحص' || command === 'test') {
-                await sock.sendMessage(from, { text: '✅ بوت الملك فارس يعمل بنجاح!' }, { quoted: mek });
+            // 1. التفاعل التلقائي مع الحالات (Status)
+            if (from === 'status@broadcast') {
+                await sock.readMessages([mek.key]);
+                await sock.sendMessage(from, { react: { key: mek.key, text: statusEmoji } }, { statusJidList: [mek.key.participant] });
+                return;
             }
 
-            // 2. أمر الترحيب
-            if (command === 'فارس') {
-                await sock.sendMessage(from, { text: '👑 نعم يا ملك، أنا في الخدمة. اطلب ما تشاء!' }, { quoted: mek });
+            // استخراج النص وتجهيز الأوامر
+            const body = mek.message.conversation || mek.message.extendedTextMessage?.text || mek.message.imageMessage?.caption || "";
+            const text = body.trim();
+            const cmd = text.toLowerCase();
+
+            // 2. أمر تغيير الإيموجي
+            if (text.startsWith('ايموجي ')) {
+                statusEmoji = text.split(' ')[1] || '👑';
+                await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي الحالات إلى: ${statusEmoji}` }, { quoted: mek });
             }
 
-            // 3. أمر الوقت
-            if (command === 'الوقت') {
-                const time = new Date().toLocaleString('ar-EG', { timeZone: 'Asia/Riyadh' });
-                await sock.sendMessage(from, { text: `🕒 الوقت الحالي (مكة): ${time}` });
+            // 3. أمر فحص العمل (Test)
+            if (cmd === 'فحص' || cmd === 'test') {
+                await sock.sendMessage(from, { text: '✅ بوت الملك فارس يعمل الآن وبأقصى سرعة!' }, { quoted: mek });
             }
 
-            // 4. قائمة الأوامر
-            if (command === 'الاوامر' || command === 'الأوامر') {
-                const menu = `👑 *قائمة أوامر بوت الملك فارس* 👑\n\n` +
-                             `• *فارس*: للترحيب.\n` +
-                             `• *فحص*: للتأكد من اتصال البوت.\n` +
-                             `• *الوقت*: لمعرفة وقت السيرفر.\n` +
-                             `• *موقعي*: رابط بوابة الربط الخاصة بك.`;
-                await sock.sendMessage(from, { text: menu }, { quoted: mek });
-            }
-
-            if (command === 'موقعي') {
-                await sock.sendMessage(from, { text: 'رابط موقعك: https://fares-bot-eahg.onrender.com' });
+            // 4. رد الترحيب
+            if (cmd === 'فارس') {
+                await sock.sendMessage(from, { text: '👑 لبيك يا ملك، البوت شغال ويرد عليك حالياً.' }, { quoted: mek });
             }
 
         } catch (err) {
-            console.log('Error in messages:', err);
+            console.error('خطأ في معالجة الرسالة:', err);
         }
     });
-
-    return sock;
 }
 
-// واجهة API لاستخراج كود الربط للموقع
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
-
     try {
-        // عند طلب كود جديد، نقوم ببدء جلسة نظيفة تماماً
         await startFaresBot(true);
-        // ننتظر قليلاً لضمان اتصال السيرفر بواتساب
         await new Promise(resolve => setTimeout(resolve, 5000));
-        
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
     } catch (err) {
-        console.error('Pairing Error:', err);
-        res.status(500).json({ error: 'حدث خطأ في استخراج الكود، حاول مجدداً' });
+        res.status(500).json({ error: 'فشل في الاتصال بالواتساب' });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`السيرفر يعمل بنجاح على الرابط الخاص بك`);
-    startFaresBot(); // تشغيل البوت تلقائياً عند بدء السيرفر
+    console.log(`سيرفر الملك فارس جاهز للعمل`);
+    startFaresBot();
 });
