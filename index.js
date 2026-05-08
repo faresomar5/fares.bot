@@ -4,13 +4,13 @@ const {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
     DisconnectReason,
-    Browsers,
-    jidDecode
+    Browsers
 } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
 const path = require('path');
 const cors = require('cors');
+const fs = require('fs-extra'); // أضفنا هذه المكتبة للمسح السهل
 
 const app = express();
 app.use(cors());
@@ -22,17 +22,12 @@ const SESSION_DIR = './session';
 
 let sock;
 
-// دالة فك تشفير المعرفات (للحصول على الرقم بدون إضافات)
-const decodeJid = (jid) => {
-    if (!jid) return jid;
-    if (/:\d+@/gi.test(jid)) {
-        let decode = jidDecode(jid) || {};
-        return decode.user + '@' + decode.server;
+async function startFaresBot(clearSession = false) {
+    // إذا طلبنا كود جديد، نمسح المجلد القديم فوراً لحل مشكلة "الكود خطأ"
+    if (clearSession && fs.existsSync(SESSION_DIR)) {
+        await fs.emptyDir(SESSION_DIR);
     }
-    return jid;
-};
 
-async function startFaresBot() {
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
     const { version } = await fetchLatestBaileysVersion();
 
@@ -41,75 +36,55 @@ async function startFaresBot() {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.macOS('Desktop'), // أفضل خيار لثبات الكود
+        // تغيير المتصفح لـ Chrome على Ubuntu هو الأسرع في إرسال الإشعارات
+        browser: Browsers.ubuntu('Chrome'), 
     });
 
-    // حفظ بيانات الجلسة
     sock.ev.on('creds.update', saveCreds);
 
-    // مراقبة حالة الاتصال
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startFaresBot();
         }
-        console.log('حالة السيرفر:', connection);
     });
 
-    // --- قسم الأوامر من داخل الواتساب ---
+    // مستمع الرسائل للأوامر (كما طلبت سابقاً)
     sock.ev.on('messages.upsert', async (chatUpdate) => {
-        try {
-            const mek = chatUpdate.messages[0];
-            if (!mek.message) return;
-            
-            const from = mek.key.remoteJid;
-            const messageType = Object.keys(mek.message)[0];
-            const body = messageType === 'conversation' ? mek.message.conversation : 
-                         messageType === 'extendedTextMessage' ? mek.message.extendedTextMessage.text : '';
+        const mek = chatUpdate.messages[0];
+        if (!mek.message || mek.key.fromMe) return;
+        const from = mek.key.remoteJid;
+        const body = mek.message.conversation || mek.message.extendedTextMessage?.text || '';
 
-            // أمر تجريبي: إذا أرسلت "فحص" أو "test" يرد البوت عليك
-            if (body.toLowerCase() === 'فحص' || body.toLowerCase() === 'test') {
-                await sock.sendMessage(from, { text: '✅ بوت الملك فارس يعمل بنجاح!' }, { quoted: mek });
-            }
-
-            // أمر لمعرفة وقت السيرفر
-            if (body === 'الوقت') {
-                await sock.sendMessage(from, { text: `الوقت الآن: ${new Date().toLocaleString('ar-EG')}` });
-            }
-
-            // يمكنك إضافة المزيد من الأوامر هنا بنفس الطريقة
-
-        } catch (err) {
-            console.log('خطأ في معالجة الرسالة:', err);
+        if (body.toLowerCase() === 'فارس') {
+            await sock.sendMessage(from, { text: '👑 نعم، أنا بوت الملك فارس، كيف أخدمك؟' });
         }
     });
 
     return sock;
 }
 
-// --- قسم الـ API لاستخراج كود الربط من الموقع ---
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
 
     try {
-        // تأكد من تشغيل البوت إذا لم يكن يعمل
-        if (!sock) await startFaresBot();
+        // أهم خطوة: إعادة تشغيل البوت مع مسح الجلسة لضمان وصول الإشعار وصحة الكود
+        await startFaresBot(true);
         
-        // انتظار بسيط لضمان جاهزية الاتصال
-        await new Promise(resolve => setTimeout(resolve, 3500));
+        // انتظار 5 ثوانٍ ليتصل السيرفر بواتساب ويجهز لطلب الكود
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
     } catch (err) {
-        console.error('Error in pairing:', err);
-        res.status(500).json({ error: 'حدث خطأ أثناء طلب الكود' });
+        console.error('Pairing Error:', err);
+        res.status(500).json({ error: 'فشل الربط، حاول مرة أخرى' });
     }
 });
 
-// تشغيل السيرفر
 app.listen(PORT, () => {
-    console.log(`السيرفر يعمل على: https://fares-bot-eahg.onrender.com`);
+    console.log(`Server running on port ${PORT}`);
     startFaresBot();
 });
