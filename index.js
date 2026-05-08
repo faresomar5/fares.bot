@@ -18,18 +18,19 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const SESSION_DIR = './session';
-const URL_APP = 'https://fares-bot-eahg.onrender.com';
+// ملاحظة: تأكد أن هذا الرابط هو رابط موقعك الفعلي على Render
+const MY_URL = 'https://fares-bot-eahg.onrender.com';
 
 let sock;
 let statusEmoji = '👑';
 
-// 1. نظام منع النوم الفعال (تنشيط كل دقيقتين)
+// دالة التنشيط لمنع السيرفر من النوم
 function keepAlive() {
     setInterval(() => {
-        axios.get(URL_APP).then(() => {
-            console.log('保持 active - السيرفر مستيقظ');
+        axios.get(MY_URL).then(() => {
+            console.log('✅ السيرفر مستيقظ - Heartbeat sent');
         }).catch(() => {});
-    }, 2 * 60 * 1000); 
+    }, 3 * 60 * 1000); // كل 3 دقائق
 }
 
 async function startFaresBot(clear = false) {
@@ -43,15 +44,12 @@ async function startFaresBot(clear = false) {
     sock = makeWASocket({
         version,
         auth: state,
-        logger: pino({ level: 'silent' }), // صامت تماماً لتوفير الرام
+        logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         browser: Browsers.ubuntu('Chrome'),
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000,
-        generateHighQualityLinkPreview: false,
-        syncFullHistory: false, // أهم خيار لمنع التوقف
-        markOnlineOnConnect: true
+        syncFullHistory: false, // لتقليل استهلاك السيرفر
+        markOnlineOnConnect: true,
+        connectTimeoutMs: 60000
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -59,23 +57,23 @@ async function startFaresBot(clear = false) {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
-            const code = lastDisconnect?.error?.output?.statusCode;
-            // إعادة الاتصال التلقائي في حال الانقطاع
-            if (code !== DisconnectReason.loggedOut) {
-                setTimeout(() => startFaresBot(), 2000);
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) {
+                console.log('🔄 جاري إعادة الاتصال...');
+                setTimeout(() => startFaresBot(), 5000);
             }
         }
-        console.log('📡 الحالة:', connection);
+        console.log('📡 حالة الاتصال:', connection);
     });
 
-    // 2. معالج الرسائل المطور (سرعة استجابة قصوى)
+    // التفاعل مع الحالات والأوامر
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
             if (!mek.message) return;
             const from = mek.key.remoteJid;
 
-            // التفاعل مع الحالات فوراً
+            // 1. التفاعل التلقائي مع الحالات
             if (from === 'status@broadcast') {
                 await sock.readMessages([mek.key]);
                 await sock.sendMessage(from, { react: { key: mek.key, text: statusEmoji } }, { statusJidList: [mek.key.participant] });
@@ -85,33 +83,37 @@ async function startFaresBot(clear = false) {
             const body = mek.message.conversation || mek.message.extendedTextMessage?.text || "";
             const cmd = body.trim().toLowerCase();
 
+            // 2. أمر الفحص
             if (cmd === 'فحص') {
-                await sock.sendMessage(from, { text: '🚀 بوت الملك فارس متصل ويعمل بنظام الحماية من النوم 24/7' }, { quoted: mek });
+                await sock.sendMessage(from, { text: '🚀 بوت الملك فارس متصل وشغال 24 ساعة!' }, { quoted: mek });
             }
 
+            // 3. تغيير الإيموجي
             if (body.startsWith('ايموجي ')) {
                 statusEmoji = body.split(' ')[1] || '👑';
-                await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي التفاعل إلى: ${statusEmoji}` });
+                await sock.sendMessage(from, { text: `✅ تم ضبط إيموجي الحالات على: ${statusEmoji}` });
             }
-        } catch (e) { console.error(e); }
+
+        } catch (e) { console.error('Error in message:', e); }
     });
 }
 
-app.get('/', (req, res) => res.send('Fares Bot is Running...'));
+// الواجهة البرمجية
+app.get('/', (req, res) => res.send('Fares Bot Online 24/7'));
 
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
     try {
         await startFaresBot(true);
-        await new Promise(r => setTimeout(r, 6000));
+        await new Promise(r => setTimeout(r, 7000));
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
-    } catch (err) { res.status(500).json({ error: 'خطأ' }); }
+    } catch (err) { res.status(500).json({ error: 'Server Error' }); }
 });
 
 app.listen(PORT, () => {
-    console.log('Server Started');
+    console.log(`Server is running on port ${PORT}`);
     startFaresBot();
     keepAlive();
 });
