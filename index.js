@@ -10,7 +10,7 @@ const express = require('express');
 const pino = require('pino');
 const path = require('path');
 const cors = require('cors');
-const fs = require('fs-extra'); // أضفنا هذه المكتبة للمسح السهل
+const fs = require('fs-extra');
 
 const app = express();
 app.use(cors());
@@ -23,7 +23,7 @@ const SESSION_DIR = './session';
 let sock;
 
 async function startFaresBot(clearSession = false) {
-    // إذا طلبنا كود جديد، نمسح المجلد القديم فوراً لحل مشكلة "الكود خطأ"
+    // مسح الجلسة فقط عند طلب كود ربط جديد لضمان عدم حدوث تعارض
     if (clearSession && fs.existsSync(SESSION_DIR)) {
         await fs.emptyDir(SESSION_DIR);
     }
@@ -36,7 +36,7 @@ async function startFaresBot(clearSession = false) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        // تغيير المتصفح لـ Chrome على Ubuntu هو الأسرع في إرسال الإشعارات
+        // تعريف المتصفح الأكثر استقراراً لضمان وصول الإشعارات
         browser: Browsers.ubuntu('Chrome'), 
     });
 
@@ -48,43 +48,81 @@ async function startFaresBot(clearSession = false) {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startFaresBot();
         }
+        console.log('حالة البوت حالياً:', connection);
     });
 
-    // مستمع الرسائل للأوامر (كما طلبت سابقاً)
+    // --- قسم الأوامر التلقائي (هنا تضيف أي أمر جديد مستقبلاً) ---
     sock.ev.on('messages.upsert', async (chatUpdate) => {
-        const mek = chatUpdate.messages[0];
-        if (!mek.message || mek.key.fromMe) return;
-        const from = mek.key.remoteJid;
-        const body = mek.message.conversation || mek.message.extendedTextMessage?.text || '';
+        try {
+            const mek = chatUpdate.messages[0];
+            if (!mek.message) return;
 
-        if (body.toLowerCase() === 'فارس') {
-            await sock.sendMessage(from, { text: '👑 نعم، أنا بوت الملك فارس، كيف أخدمك؟' });
+            const from = mek.key.remoteJid;
+            // استخراج النص من أنواع الرسائل المختلفة
+            const body = mek.message.conversation || 
+                         mek.message.extendedTextMessage?.text || 
+                         mek.message.imageMessage?.caption || "";
+
+            const command = body.toLowerCase().trim();
+
+            // 1. أمر فحص البوت
+            if (command === 'فحص' || command === 'test') {
+                await sock.sendMessage(from, { text: '✅ بوت الملك فارس يعمل بنجاح!' }, { quoted: mek });
+            }
+
+            // 2. أمر الترحيب
+            if (command === 'فارس') {
+                await sock.sendMessage(from, { text: '👑 نعم يا ملك، أنا في الخدمة. اطلب ما تشاء!' }, { quoted: mek });
+            }
+
+            // 3. أمر الوقت
+            if (command === 'الوقت') {
+                const time = new Date().toLocaleString('ar-EG', { timeZone: 'Asia/Riyadh' });
+                await sock.sendMessage(from, { text: `🕒 الوقت الحالي (مكة): ${time}` });
+            }
+
+            // 4. قائمة الأوامر
+            if (command === 'الاوامر' || command === 'الأوامر') {
+                const menu = `👑 *قائمة أوامر بوت الملك فارس* 👑\n\n` +
+                             `• *فارس*: للترحيب.\n` +
+                             `• *فحص*: للتأكد من اتصال البوت.\n` +
+                             `• *الوقت*: لمعرفة وقت السيرفر.\n` +
+                             `• *موقعي*: رابط بوابة الربط الخاصة بك.`;
+                await sock.sendMessage(from, { text: menu }, { quoted: mek });
+            }
+
+            if (command === 'موقعي') {
+                await sock.sendMessage(from, { text: 'رابط موقعك: https://fares-bot-eahg.onrender.com' });
+            }
+
+        } catch (err) {
+            console.log('Error in messages:', err);
         }
     });
 
     return sock;
 }
 
+// واجهة API لاستخراج كود الربط للموقع
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
 
     try {
-        // أهم خطوة: إعادة تشغيل البوت مع مسح الجلسة لضمان وصول الإشعار وصحة الكود
+        // عند طلب كود جديد، نقوم ببدء جلسة نظيفة تماماً
         await startFaresBot(true);
-        
-        // انتظار 5 ثوانٍ ليتصل السيرفر بواتساب ويجهز لطلب الكود
+        // ننتظر قليلاً لضمان اتصال السيرفر بواتساب
         await new Promise(resolve => setTimeout(resolve, 5000));
         
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
     } catch (err) {
         console.error('Pairing Error:', err);
-        res.status(500).json({ error: 'فشل الربط، حاول مرة أخرى' });
+        res.status(500).json({ error: 'حدث خطأ في استخراج الكود، حاول مجدداً' });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    startFaresBot();
+    console.log(`السيرفر يعمل بنجاح على الرابط الخاص بك`);
+    startFaresBot(); // تشغيل البوت تلقائياً عند بدء السيرفر
 });
