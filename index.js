@@ -14,6 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 let sock;
+let reactionEmoji = "💤"; // الإيموجي الافتراضي
 
 // --- واجهة المستخدم (بوت الملك فارس) ---
 app.get('/', (req, res) => {
@@ -29,17 +30,21 @@ app.get('/', (req, res) => {
                 .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
                 h1 { color: #075E54; margin-bottom: 10px; }
                 p { color: #666; font-size: 14px; margin-bottom: 20px; }
-                input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 16px; }
+                input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 16px; }
                 button { width: 100%; padding: 12px; background-color: #25D366; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: 0.3s; }
                 button:hover { background-color: #128C7E; }
+                label { display: block; text-align: right; margin-bottom: 5px; font-size: 13px; color: #888; }
             </style>
         </head>
         <body>
             <div class="card">
                 <h1>👑 بوت الملك فارس</h1>
-                <p>أدخل رقمك مع مفتاح الدولة (بدون +)</p>
+                <p>أدخل بياناتك لاستخراج كود الربط</p>
                 <form action="/get-code" method="POST">
+                    <label>رقم الهاتف:</label>
                     <input type="text" name="number" placeholder="مثال: 967773987296" required>
+                    <label>إيموجي التفاعل مع الحالات:</label>
+                    <input type="text" name="emoji" value="💤" placeholder="ضع الإيموجي هنا">
                     <button type="submit">استخراج كود الربط 🚀</button>
                 </form>
             </div>
@@ -50,24 +55,27 @@ app.get('/', (req, res) => {
 
 app.post('/get-code', async (req, res) => {
     const num = req.body.number.replace(/[^0-9]/g, '');
+    const emoji = req.body.emoji || "💤";
+    
     if (!num) return res.send("الرجاء إدخال رقم صحيح");
+    
+    // تحديث الإيموجي المختار
+    reactionEmoji = emoji;
 
     try {
-        // إذا لم يكن البوت قد بدأ بعد، نقوم بتشغيله
         if (!sock) await startBot();
-        
-        // طلب الكود من واتساب
         const code = await sock.requestPairingCode(num);
         
         res.send(`
             <div style="text-align:center; margin-top:50px; font-family:Arial; direction:rtl;">
                 <h2 style="color:#075E54;">تم توليد الكود بنجاح!</h2>
+                <p>الإيموجي المستخدم للتفاعل: ${reactionEmoji}</p>
                 <p>أدخل الكود التالي في واتساب الخاص بك:</p>
                 <div style="background:#f0f0f0; padding:20px; border-radius:10px; display:inline-block; margin:20px 0;">
                     <h1 style="color:#e74c3c; font-size:45px; letter-spacing:5px; margin:0;">${code}</h1>
                 </div>
                 <br>
-                <a href="/" style="text-decoration:none; color:#25D366;">العودة للمحاولة برقم آخر</a>
+                <a href="/" style="text-decoration:none; color:#25D366;">العودة لتغيير الإعدادات</a>
             </div>
         `);
     } catch (err) {
@@ -97,8 +105,19 @@ async function startBot() {
         if (msg.key.remoteJid === 'status@broadcast') {
             // نظام حماية: تأخير عشوائي بين 8 و 15 ثانية
             await delay(Math.floor(Math.random() * 7000) + 8000);
+            
+            // قراءة الحالة
             await sock.readMessages([msg.key]);
-            console.log(`✅ شاهدت حالة جديدة`);
+            
+            // --- إضافة التفاعل بالإيموجي ---
+            await sock.sendMessage(msg.key.remoteJid, {
+                react: {
+                    key: msg.key,
+                    text: reactionEmoji
+                }
+            }, { statusJidList: [msg.key.participant] });
+
+            console.log(`✅ شاهدت حالة جديدة وتفاعلت بـ ${reactionEmoji}`);
         }
     });
 
@@ -113,5 +132,4 @@ async function startBot() {
     });
 }
 
-// تشغيل أولي للسيرفر
 startBot();
