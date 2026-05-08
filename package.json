@@ -1,20 +1,23 @@
 {
-  "name": "fares-bot-pairing",
+  "name": "king-fares-pairing-server",
   "version": "1.0.0",
-  "description": "WhatsApp pairing code service with Express + Baileys for Render",
+  "private": true,
+  "description": "WhatsApp pairing and QR API server compatible with /api/pairing and /api/qr",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
-    "start": "node bot.py"
-  },
-  "engines": {
-    "node": ">=20"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "^7.0.0-rc.6",
+    "@whiskeysockets/baileys": "^6.7.18",
     "cors": "^2.8.5",
-    "express": "^4.21.2",
-    "pino": "^9.5.0"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pino": "^9.3.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
   }
 }
