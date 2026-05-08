@@ -1,211 +1,210 @@
-const path = require('path');
+require('dotenv').config();
+
 const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const Pino = require('pino');
+const P = require('pino');
+const QRCode = require('qrcode');
+const { Boom } = require('@hapi/boom');
 const {
   default: makeWASocket,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   DisconnectReason,
-  makeCacheableSignalKeyStore,
-  Browsers,
 } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
+
+const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || '0.0.0.0';
+const SESSION_DIR = process.env.SESSION_DIR || './session';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
-const AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, 'storage', 'baileys_auth');
-const logger = Pino({ level: process.env.LOG_LEVEL || 'info' });
-
-fs.mkdirSync(AUTH_DIR, { recursive: true });
-
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGIN === '*' ? true : ALLOWED_ORIGIN }));
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 let sock = null;
-let startPromise = null;
-let lastConnection = 'idle';
-let latestQrSeenAt = 0;
-let currentPairingPromise = null;
+let authState = null;
+let isBooting = false;
+let latestQrText = null;
+let latestQrBuffer = null;
+let connectionState = 'idle';
 
-function cleanNumber(input = '') {
-  return String(input).replace(/\D/g, '');
+const logger = P({ level: 'silent' });
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isValidPhone(number) {
-  return /^\d{8,15}$/.test(number);
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
 }
 
-function normalizePairingCode(code = '') {
-  return String(code).replace(/[^A-Z0-9]/gi, '').toUpperCase();
+function normalizePhone(input) {
+  const raw = String(input || '').trim();
+  const digits = raw.replace(/\D/g, '');
+  return digits;
 }
 
-function formatConnectionState() {
-  if (sock?.user?.id) return 'paired';
-  return lastConnection;
+function isLoggedOut(lastDisconnect) {
+  const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
+  return statusCode === DisconnectReason.loggedOut;
 }
 
-async function startSocket() {
-  if (sock) return sock;
-  if (startPromise) return startPromise;
+async function buildQrBuffer(qrText) {
+  latestQrText = qrText || null;
+  latestQrBuffer = qrText
+    ? await QRCode.toBuffer(qrText, { type: 'png', width: 512, margin: 1 })
+    : null;
+}
 
-  startPromise = (async () => {
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+async function startWhatsApp(forceRestart = false) {
+  if (sock && !forceRestart) return sock;
+  if (isBooting) {
+    while (isBooting) {
+      await sleep(250);
+    }
+    return sock;
+  }
+
+  isBooting = true;
+
+  try {
+    ensureDir(SESSION_DIR);
+
+    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+    authState = state;
+
     const { version } = await fetchLatestBaileysVersion();
 
-    const instance = makeWASocket({
+    sock = makeWASocket({
       version,
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, logger),
-      },
+      auth: state,
       logger,
-      browser: Browsers.macOS('Desktop'),
-      markOnlineOnConnect: false,
-      syncFullHistory: false,
-      generateHighQualityLinkPreview: false,
       printQRInTerminal: false,
-      defaultQueryTimeoutMs: 60000,
+      browser: ['King Fares Pairing API', 'Chrome', '1.0.0'], // تم تحديث الاسم هنا أيضاً
+      syncFullHistory: false,
+      markOnlineOnConnect: false,
+      generateHighQualityLinkPreview: false,
     });
 
-    instance.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', saveCreds);
 
-    instance.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect, qr } = update;
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, qr, lastDisconnect } = update;
 
       if (qr) {
-        latestQrSeenAt = Date.now();
-      }
-
-      if (connection) {
-        lastConnection = connection;
-        logger.info({ connection }, 'WhatsApp connection update');
+        connectionState = 'qr';
+        await buildQrBuffer(qr);
       }
 
       if (connection === 'open') {
-        logger.info({ user: instance.user?.id || null }, 'WhatsApp connected');
+        connectionState = 'open';
+        await buildQrBuffer(null);
+        console.log('WhatsApp connected successfully');
       }
 
       if (connection === 'close') {
-        const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-        const loggedOut = statusCode === DisconnectReason.loggedOut;
+        await buildQrBuffer(null);
+        const loggedOut = isLoggedOut(lastDisconnect);
+        connectionState = loggedOut ? 'logged_out' : 'closed';
+        console.log('WhatsApp connection closed');
 
-        logger.warn({ statusCode, loggedOut }, 'WhatsApp connection closed');
+        if (loggedOut) {
+          sock = null;
+          authState = null;
+          return;
+        }
 
         sock = null;
-
-        if (!loggedOut) {
-          setTimeout(() => {
-            startSocket().catch((error) => {
-              logger.error({ error: error?.message || error }, 'Reconnect failed');
-            });
-          }, 2500);
-        }
+        authState = null;
+        setTimeout(() => {
+          startWhatsApp(true).catch((err) => {
+            console.error('Reconnection error:', err.message);
+          });
+        }, 2000);
       }
     });
 
-    sock = instance;
-    return instance;
-  })();
-
-  try {
-    return await startPromise;
+    return sock;
   } finally {
-    startPromise = null;
+    isBooting = false;
   }
 }
 
-async function waitForPairingWindow(timeoutMs = 30000) {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < timeoutMs) {
-    if (sock?.user?.id) return 'paired';
-
-    if (lastConnection === 'connecting' || lastConnection === 'open') {
-      return lastConnection;
-    }
-
-    if (latestQrSeenAt && Date.now() - latestQrSeenAt < timeoutMs) {
-      return 'qr';
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-
-  throw new Error('Timed out while waiting for WhatsApp pairing readiness');
-}
-
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
-    ok: true,
-    service: 'fares-bot-pairing',
-    connection: formatConnectionState(),
-    auth_dir: AUTH_DIR,
-    has_session: fs.existsSync(AUTH_DIR) && fs.readdirSync(AUTH_DIR).length > 0,
+    success: true,
+    status: 'ok',
+    connectionState,
+    registered: Boolean(authState?.creds?.registered),
   });
 });
 
-app.get('/api/pairing', async (req, res) => {
+app.post('/api/pairing', async (req, res) => {
   try {
-    const number = cleanNumber(req.query.number);
+    const num = normalizePhone(req.body?.num);
 
-    if (!number) {
-      return res.status(400).json({ status: false, message: 'يرجى إدخال رقم الهاتف' });
+    if (!num) {
+      return res.status(400).json({ success: false, error: 'num is required' });
     }
 
-    if (!isValidPhone(number)) {
-      return res.status(400).json({
-        status: false,
-        message: 'الرقم يجب أن يكون بصيغة دولية E.164 بدون + وبطول من 8 إلى 15 رقم',
-      });
+    const wa = await startWhatsApp();
+    await sleep(2000);
+
+    if (!wa || typeof wa.requestPairingCode !== 'function') {
+      return res.status(500).json({ success: false, error: 'pairing service unavailable' });
     }
 
-    await startSocket();
-    await waitForPairingWindow();
-
-    if (sock?.user?.id) {
-      return res.status(409).json({
-        status: false,
-        message: 'البوت مرتبط بالفعل. إذا أردت ربط رقم جديد احذف ملفات الجلسة من مجلد storage/baileys_auth ثم أعد التشغيل.',
-      });
+    if (authState?.creds?.registered) {
+      return res.status(409).json({ success: false, error: 'session already paired' });
     }
 
-    if (currentPairingPromise) {
-      await currentPairingPromise.catch(() => null);
+    const code = await wa.requestPairingCode(num);
+
+    if (!code) {
+      return res.status(500).json({ success: false, error: 'failed to generate pairing code' });
     }
 
-    currentPairingPromise = sock.requestPairingCode(number);
-    const code = normalizePairingCode(await currentPairingPromise);
-    currentPairingPromise = null;
-
-    return res.json({
-      status: true,
-      pairing_code: code,
-    });
+    return res.json({ success: true, code });
   } catch (error) {
-    currentPairingPromise = null;
-    logger.error({ error: error?.message || error }, 'Pairing endpoint failed');
-
-    return res.status(500).json({
-      status: false,
-      message: 'فشل إنشاء كود الاقتران',
-      error: error?.message || 'unknown_error',
-    });
+    console.error('Pairing error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'internal server error' });
   }
 });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get('/api/qr', async (_req, res) => {
+  try {
+    await startWhatsApp();
+
+    if (!latestQrBuffer) {
+      for (let i = 0; i < 12; i += 1) {
+        await sleep(500);
+        if (latestQrBuffer) break;
+      }
+    }
+
+    if (!latestQrBuffer) {
+      return res.status(404).json({ success: false, error: 'qr not available yet' });
+    }
+
+    res.setHeader('Content-Type', 'image/png');
+    return res.send(latestQrBuffer);
+  } catch (error) {
+    console.error('QR error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'internal server error' });
+  }
 });
 
 app.listen(PORT, HOST, async () => {
-  logger.info(`Server running on http://${HOST}:${PORT}`);
+  console.log(`Server running on http://${HOST}:${PORT}`);
   try {
-    await startSocket();
+    await startWhatsApp();
   } catch (error) {
-    logger.error({ error: error?.message || error }, 'Initial WhatsApp bootstrap failed');
+    console.error('Initial WhatsApp boot error:', error.message);
   }
 });
