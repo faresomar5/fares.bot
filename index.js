@@ -1,18 +1,29 @@
-const { default: makeWASocket, useMultiFileAuthState, delay, fetchLatestBaileysVersion, DisconnectReason } = require("@whiskeysockets/baileys");
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    delay, 
+    fetchLatestBaileysVersion, 
+    DisconnectReason 
+} = require("@whiskeysockets/baileys");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const express = require('express');
 const pino = require('pino');
+const fs = require('fs-extra');
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// إعداد الذكاء الاصطناعي بمفتاحك الخاص
+const genAI = new GoogleGenerativeAI("AIzaSyBklT9MOcHID87Fnb86Xz0F551v9Vw_P-k");
+
 let sock;
 // مخزن الإعدادات
 let settings = {
     alwaysOnline: true,
     antiLink: false,
-    aiChat: false,
+    aiChat: true, // تفعيل الذكاء الاصطناعي
     statusReact: true,
     statusEmoji: "👑",
     replies: []
@@ -34,8 +45,9 @@ app.get('/', (req, res) => {
         h1 { color: var(--gold); text-align: center; font-size: 24px; }
         .item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #1e293b; }
         .btn { background: var(--gold); color: black; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
-        input[type="text"] { background: #020617; border: 1px solid #1e293b; color: white; padding: 8px; border-radius: 5px; width: 100px; text-align: center; }
+        input[type="text"], input[type="number"] { background: #020617; border: 1px solid #1e293b; color: white; padding: 8px; border-radius: 5px; width: 100px; text-align: center; }
         .status { color: var(--accent); font-weight: bold; }
+        .pair-section { border-top: 2px solid var(--gold); padding-top: 20px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -63,8 +75,16 @@ app.get('/', (req, res) => {
             </div>
             <div id="list" style="margin-top:10px; font-size:12px; color:#94a3b8;"></div>
         </div>
+
+        <div class="card pair-section">
+            <span style="color:var(--gold)">ربط رقم الواتساب بالكود</span>
+            <form action="/pair" method="POST" style="margin-top:10px;">
+                <input type="number" name="number" placeholder="967..." style="width:100%; margin-bottom:10px; box-sizing: border-box;" required>
+                <button type="submit" class="btn">استخراج كود الربط الآن 🚀</button>
+            </form>
+        </div>
         
-        <button class="btn" onclick="location.reload()">تحديث الإعدادات 🔄</button>
+        <button class="btn" onclick="location.reload()" style="background:#475569; color:white;">تحديث الصفحة 🔄</button>
     </div>
 
     <script>
@@ -86,15 +106,52 @@ app.post('/api/update', (req, res) => { settings[req.body.key] = !settings[req.b
 app.post('/api/emoji', (req, res) => { settings.statusEmoji = req.body.val; res.json({success: true}); });
 app.post('/api/reply', (req, res) => { settings.replies.push({k: req.body.k, v: req.body.v}); res.json({success: true}); });
 
-app.listen(port, () => console.log(`Dashboard is live!`));
+// --- واجهة استلام كود الربط ---
+app.post('/pair', async (req, res) => {
+    let num = req.body.number.replace(/[^0-9]/g, '');
+    if (!num) return res.send("الرجاء إدخال الرقم بشكل صحيح مع مفتاح الدولة");
+    
+    // إعادة تشغيل البوت للرقم الجديد
+    if (fs.existsSync('./auth_info')) fs.removeSync('./auth_info');
+    await startBot();
+    
+    try {
+        const code = await sock.requestPairingCode(num);
+        res.send(`
+        <body style="background:#020617; color:white; text-align:center; padding-top:100px; font-family:sans-serif;">
+            <h2 style="color:#94a3b8;">كود الربط الخاص بالرقم ${num} هو:</h2>
+            <h1 style="color:#d4a017; font-size:60px; letter-spacing:10px;">${code}</h1>
+            <p>قم بوضع الكود في إشعارات الواتساب بجوالك الآن.</p>
+            <br><a href="/" style="color:#d4a017; text-decoration:none;">← العودة للوحة التحكم</a>
+        </body>`);
+    } catch (e) {
+        res.send("حدث خطأ في طلب الكود، يرجى المحاولة لاحقاً.");
+    }
+});
+
+app.listen(port, () => console.log(`Dashboard and Pairing System is live!`));
 
 // --- محرك البوت الذكي ---
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-    sock = makeWASocket({ auth: state, printQRInTerminal: true, logger: pino({ level: "silent" }) });
+    const { version } = await fetchLatestBaileysVersion();
+
+    sock = makeWASocket({ 
+        version,
+        auth: state, 
+        printQRInTerminal: false, 
+        logger: pino({ level: "silent" }),
+        browser: ["Ubuntu", "Chrome", "20.0.04"]
+    });
 
     sock.ev.on('creds.update', saveCreds);
-    sock.ev.on('connection.update', (u) => { if (u.connection === 'open') sock.sendPresenceUpdate('available'); if (u.connection === 'close') startBot(); });
+    sock.ev.on('connection.update', (u) => { 
+        if (u.connection === 'open') {
+            sock.sendPresenceUpdate('available');
+            console.log("✅ البوت متصل الآن!");
+        }
+        if (u.connection === 'close') startBot(); 
+    });
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0]; if (!msg.message || msg.key.fromMe) return;
@@ -108,21 +165,28 @@ async function startBot() {
             return;
         }
 
-        // 2. مسح الروابط (Anti-Link) في الخاص
+        // 2. مسح الروابط (Anti-Link)
         if (settings.antiLink && text.includes("http")) {
             await sock.sendMessage(from, { text: "⚠️ تم كشف رابط! سيتم حذف الدردشة الآن." });
             await sock.chatModify({ delete: true, lastMessages: [{ key: msg.key, messageTimestamp: msg.messageTimestamp }] }, from);
             return;
         }
 
-        // 3. الردود التلقائية (حتى 100 رد)
+        // 3. الردود التلقائية
         settings.replies.forEach(async r => {
             if (text.toLowerCase() === r.k.toLowerCase()) await sock.sendMessage(from, { text: r.v });
         });
 
-        // 4. الذكاء الاصطناعي (AI)
+        // 4. الذكاء الاصطناعي (Gemini AI)
         if (settings.aiChat) {
-            await sock.sendMessage(from, { text: "مرحباً! أنا ذكاء اصطناعي مبرمج بواسطة الملك فارس. كيف أخدمك؟" });
+            try {
+                const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+                const result = await model.generateContent(text);
+                const aiReply = result.response.text();
+                await sock.sendMessage(from, { text: aiReply });
+            } catch (err) {
+                console.error("AI Error");
+            }
         }
     });
 }
