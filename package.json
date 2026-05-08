@@ -1,17 +1,16 @@
 {
-  "name": "fares-ai-bot",
-  "version": "1.2.0",
-  "description": "WhatsApp Bot with Gemini AI and Multi-Session",
+  "name": "fares-multi-session",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot Multi-Session",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.1.0",
+    "@google/generative-ai": "^0.2.1",
     "@whiskeysockets/baileys": "latest",
     "express": "latest",
     "pino": "latest",
-    "fs-extra": "latest",
-    "link-preview-js": "latest"
+    "fs-extra": "latest"
   }
 }
