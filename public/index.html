@@ -1,201 +1,280 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fares-Bot Pairing</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #111827;
-      --card: #1f2937;
-      --muted: #9ca3af;
-      --text: #f9fafb;
-      --accent: #25d366;
-      --accent-hover: #1ebc59;
-      --danger: #ef4444;
-      --border: rgba(255,255,255,0.08);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 بوت الملك فارس</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@1,300;1,500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at top, #1f2937 0%, var(--bg) 55%);
-      font-family: Tahoma, Arial, sans-serif;
-      color: var(--text);
-      padding: 24px;
-    }
-
-    .card {
-      width: min(100%, 430px);
-      background: rgba(31, 41, 55, 0.94);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 28px;
-      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
-      backdrop-filter: blur(8px);
-    }
-
-    h1 {
-      margin: 0 0 10px;
-      color: var(--accent);
-      text-align: center;
-      font-size: 28px;
-    }
-
-    p {
-      margin: 0 0 18px;
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.7;
-      font-size: 15px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      color: #d1d5db;
-    }
-
-    input {
-      width: 100%;
-      border: 1px solid var(--border);
-      background: rgba(17, 24, 39, 0.9);
-      color: var(--text);
-      border-radius: 12px;
-      padding: 14px 16px;
-      text-align: left;
-      direction: ltr;
-      font-size: 16px;
-      outline: none;
-      transition: border-color 0.2s ease, transform 0.2s ease;
-    }
-
-    input:focus {
-      border-color: rgba(37, 211, 102, 0.65);
-      transform: translateY(-1px);
-    }
-
-    button {
-      width: 100%;
-      margin-top: 14px;
-      border: none;
-      background: var(--accent);
-      color: #08130d;
-      border-radius: 12px;
-      padding: 14px 16px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.2s ease;
-    }
-
-    button:hover { background: var(--accent-hover); }
-    button:active { transform: scale(0.99); }
-    button:disabled { opacity: 0.75; cursor: wait; }
-
-    .result {
-      margin-top: 18px;
-      padding: 14px;
-      min-height: 60px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: rgba(17, 24, 39, 0.75);
-      display: grid;
-      place-items: center;
-      text-align: center;
-      line-height: 1.7;
-    }
-
-    .code {
-      color: var(--accent);
-      font-weight: 800;
-      font-size: 28px;
-      letter-spacing: 3px;
-      direction: ltr;
-    }
-
-    .error {
-      color: #fecaca;
-      background: rgba(127, 29, 29, 0.25);
-      border-color: rgba(239, 68, 68, 0.35);
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .hint {
-      margin-top: 12px;
-      font-size: 13px;
-      color: var(--muted);
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Fares-Bot Pairing</h1>
-    <p>أدخل رقم واتساب بصيغة دولية بدون علامة + للحصول على كود الاقتران.</p>
-
-    <label for="phone">رقم الهاتف</label>
-    <input id="phone" type="text" placeholder="مثال: 201001234567" inputmode="numeric" />
-
-    <button id="pairBtn" onclick="getCode()">احصل على الكود</button>
-
-    <div id="result" class="result">
-      <span class="muted">الكود سيظهر هنا</span>
-    </div>
-
-    <div class="hint">مثال صحيح: 201001234567 أو 967770000000</div>
-  </div>
-
-  <script>
-    const phoneInput = document.getElementById('phone');
-    const pairBtn = document.getElementById('pairBtn');
-    const result = document.getElementById('result');
-
-    phoneInput.addEventListener('input', () => {
-      phoneInput.value = phoneInput.value.replace(/\D/g, '');
-    });
-
-    function setResult(html, isError = false) {
-      result.className = isError ? 'result error' : 'result';
-      result.innerHTML = html;
-    }
-
-    async function getCode() {
-      const number = phoneInput.value.trim().replace(/\D/g, '');
-
-      if (!number) {
-        setResult('أدخل الرقم أولاً', true);
-        return;
-      }
-
-      pairBtn.disabled = true;
-      setResult('<span class="muted">جاري إنشاء كود الاقتران...</span>');
-
-      try {
-        const response = await fetch(`/api/pairing?number=${encodeURIComponent(number)}`);
-        const data = await response.json();
-
-        if (!response.ok || !data.status) {
-          throw new Error(data.message || 'حدث خطأ غير متوقع');
+    <style>
+        :root {
+            --bg: #0d0d12;
+            --card: #1a1a27;
+            --card2: #13131c;
+            --border: rgba(255,255,255,0.07);
+            --border-accent: rgba(212,160,85,0.35);
+            --gold: #d4a055;
+            --gold-light: #f0c880;
+            --rose: #e8697a;
+            --rose-light: #f5a0ac;
+            --text: #f0eaf5;
+            --muted: #8a849a;
+            --faint: #4a4460;
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
         }
 
-        setResult(`<span class="code">${data.pairing_code}</span>`);
-      } catch (error) {
-        setResult(error.message || 'فشل الاتصال بالسيرفر', true);
-      } finally {
-        pairBtn.disabled = false;
-      }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 40% at 20% 10%, rgba(0,210,255,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 30% at 80% 80%, rgba(212,160,85,0.07) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .fade-in {
+            animation: smoothFade 0.7s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes smoothFade {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .langOverlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(14px);
+        }
+
+        .langBox {
+            text-align: center;
+            background: var(--card);
+            padding: 48px 40px;
+            border-radius: 28px;
+            border: 1px solid var(--border-accent);
+            max-width: 420px;
+            width: 90%;
+        }
+
+        .langBox-eyebrow {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--gold);
+            opacity: 0.8;
+            margin-bottom: 14px;
+        }
+
+        .lang-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .langBtn {
+            background: transparent;
+            border: 1px solid var(--border-accent);
+            padding: 14px 20px;
+            cursor: pointer;
+            border-radius: 14px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+            transition: all 0.25s;
+        }
+
+        .langBtn:hover {
+            background: rgba(212,160,85,0.1);
+            border-color: var(--gold);
+        }
+
+        .mainBody {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            width: 100%;
+            text-align: center;
+            padding: 52px 20px 40px;
+        }
+
+        .header h1 .accent {
+            background: linear-gradient(135deg, var(--gold), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            max-width: 440px;
+            width: 92%;
+            margin: 0 auto;
+            padding-bottom: 60px;
+        }
+
+        .tab-switcher {
+            display: flex;
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 5px;
+            margin-bottom: 22px;
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 14px 10px;
+            color: var(--muted);
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .tab-btn.active { color: var(--gold-light); }
+
+        .card, .qr-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px 28px;
+        }
+
+        .submitBtn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--gold), #b8853a);
+            border: none;
+            padding: 18px;
+            margin-top: 22px;
+            color: #0d0d0d;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+
+        .footer-bar {
+            text-align: center;
+            border-top: 1px solid var(--border);
+            padding: 28px 20px;
+            width: 100%;
+        }
+
+        .footer-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--gold), var(--rose-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+<div id="langOverlay" class="langOverlay">
+    <div class="langBox fade-in">
+        <p class="langBox-eyebrow">✦ بوت الملك فارس ✦</p>
+        <h2>👑 أهلاً بك</h2>
+        <p>اختر اللغة للمتابعة</p>
+        <div class="lang-grid" style="margin-top: 20px;">
+            <button class="langBtn" onclick="initPage('ar')">العربية</button>
+            <button class="langBtn" onclick="initPage('en')">English</button>
+        </div>
+    </div>
+</div>
+
+<div id="mainBody" class="mainBody">
+    <header class="header fade-in">
+        <p class="header-eyebrow">✦ بوابة ربط الأجهزة ✦</p>
+        <h1 id="titleText"><span class="accent">بوت الملك</span> فارس</h1>
+        <div class="header-divider" style="width: 50px; height: 1px; background: var(--gold); margin: 15px auto;"></div>
+    </header>
+
+    <div class="container">
+        <div class="tab-switcher fade-in">
+            <button class="tab-btn active" id="tabPairing" onclick="switchTab('pairing')">🔗 رمز الإقران</button>
+            <button class="tab-btn" id="tabQr" onclick="switchTab('qr')">📷 رمز QR</button>
+        </div>
+
+        <div id="panelPairing" class="tab-panel visible">
+            <div class="card">
+                <div class="inputGroup">
+                    <label id="numLabel">رقم الواتساب</label>
+                    <input type="text" id="phoneNum" placeholder="967XXXXXXXX" style="width:100%; padding:15px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:white; border-radius:10px;">
+                </div>
+                <button class="submitBtn" id="submitBtn" onclick="handleSubmit()">ربط الجهاز</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-bar">
+        <div class="footer-brand">👑 بوت الملك فارس</div>
+        <div class="footer-copy" style="color:gray; font-size:0.8rem;">© 2026 الملك فارس · جميع الحقوق محفوظة</div>
+    </footer>
+</div>
+
+<script>
+    const API = {
+        pairing : 'https://fares-bot-eahg.onrender.com/api/pairing',
+        qr      : 'https://fares-bot-eahg.onrender.com/api/qr',
+    };
+
+    let currentLang = 'ar';
+
+    function initPage(lang) {
+        currentLang = lang;
+        document.getElementById('langOverlay').style.display = 'none';
+        document.getElementById('mainBody').style.display = 'flex';
     }
-  </script>
+
+    async function handleSubmit() {
+        let phone = document.getElementById('phoneNum').value.replace(/\D/g, '');
+        if (!phone) return Swal.fire('خطأ', 'يرجى إدخال الرقم', 'error');
+
+        Swal.fire({ title: 'جاري المعالجة...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await fetch(API.pairing, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ num: phone })
+            });
+            const result = await res.json();
+            if (result.code) {
+                Swal.fire({ title: 'رمز الإقران الخاص بك:', html: `<b style="font-size:2rem; color:#d4a055;">${result.code}</b>`, icon: 'success' });
+            } else {
+                throw new Error(result.error || 'فشل الاتصال');
+            }
+        } catch (err) {
+            Swal.fire('خطأ', err.message, 'error');
+        }
+    }
+</script>
 </body>
 </html>
