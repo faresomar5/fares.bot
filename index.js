@@ -4,7 +4,8 @@ const {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
     DisconnectReason,
-    Browsers
+    Browsers,
+    delay
 } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
@@ -25,7 +26,6 @@ const MY_URL = 'https://fares-bot-eahg.onrender.com';
 let sock;
 let statusEmoji = '👑'; 
 
-// تنشيط السيرفر لمنع النوم
 function keepAlive() {
     setInterval(() => {
         axios.get(MY_URL).catch(() => {});
@@ -66,14 +66,25 @@ async function startFaresBot(clear = false) {
             if (!mek || !mek.message) return;
             const from = mek.key.remoteJid;
 
-            // التفاعل مع كافة أنواع الاستوريات (نص، صور، فيديو)
+            // نظام التفاعل المطور مع الحالات
             if (from === 'status@broadcast') {
+                // 1. إرسال إشارة المشاهدة
                 await sock.readMessages([mek.key]);
+                
+                // 2. انتظار بسيط لضمان استقرار الطلب
+                await delay(2000);
+
+                // 3. إرسال التفاعل بالإيموجي مع تحديد مفتاح الرسالة بدقة
                 await sock.sendMessage(from, { 
-                    react: { key: mek.key, text: statusEmoji } 
+                    react: { 
+                        key: mek.key, 
+                        text: statusEmoji 
+                    } 
                 }, { 
                     statusJidList: [mek.key.participant] 
                 });
+                
+                console.log(`✅ تم التفاعل بنجاح على حالة من: ${mek.key.participant}`);
                 return;
             }
 
@@ -83,15 +94,15 @@ async function startFaresBot(clear = false) {
                 const em = body.split(' ')[1];
                 if (em) {
                     statusEmoji = em;
-                    await sock.sendMessage(from, { text: `✅ تم تحديث الإيموجي إلى: ${statusEmoji}` }, { quoted: mek });
+                    await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي التفاعل إلى: ${statusEmoji}` }, { quoted: mek });
                 }
             }
 
             if (body.toLowerCase() === 'فحص') {
-                await sock.sendMessage(from, { text: '🚀 البوت شغال تمام وبدون أخطاء!' }, { quoted: mek });
+                await sock.sendMessage(from, { text: '🚀 البوت متصل ويقوم بمراقبة الحالات للتفاعل!' }, { quoted: mek });
             }
         } catch (e) {
-            console.error('Error:', e);
+            console.error('Error handling status:', e);
         }
     });
 }
