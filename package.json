@@ -1,7 +1,7 @@
 {
-  "name": "fares-bot-stable",
-  "version": "1.0.0",
-  "description": "WhatsApp Bot for Fares",
+  "name": "fares-bot-ultra-stable",
+  "version": "1.1.0",
+  "description": "WhatsApp & Telegram Bot System for Fares",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
