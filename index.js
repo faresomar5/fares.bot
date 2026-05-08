@@ -9,14 +9,13 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const express = require('express');
 const pino = require('pino');
 const fs = require('fs-extra');
-const path = require('path');
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// تهيئة الذكاء الاصطناعي بمفتاحك الخاص
+// تهيئة الذكاء الاصطناعي
 const genAI = new GoogleGenerativeAI("AIzaSyBklT9MOcHID87Fnb86Xz0F551v9Vw_P-k");
 
 let sock;
@@ -29,87 +28,78 @@ let settings = {
     replies: []
 };
 
-// --- واجهة المستخدم (لوحة التحكم) ---
+// --- واجهة التحكم الذهبية ---
 app.get('/', (req, res) => {
     res.send(`
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOLDEN QUEEN | CONTROL</title>
+    <title>GOLDEN QUEEN | PRO</title>
     <style>
-        :root { --bg: #020617; --panel: #0f172a; --gold: #d4a017; --text: #f8fafc; --accent: #22c55e; }
-        body { background: var(--bg); color: var(--text); font-family: system-ui; padding: 20px; margin: 0; }
-        .container { max-width: 600px; margin: auto; }
-        .card { background: var(--panel); border: 1px solid #1e293b; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.3); }
-        h1 { color: var(--gold); text-align: center; font-size: 24px; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #1e293b; }
-        .btn { background: var(--gold); color: black; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
-        input[type="text"], input[type="number"] { background: #020617; border: 1px solid #1e293b; color: white; padding: 8px; border-radius: 5px; width: 100px; text-align: center; }
-        .status { color: var(--accent); font-weight: bold; }
-        .pair-section { border-top: 2px solid var(--gold); padding-top: 20px; margin-top: 10px; }
+        :root { --bg: #020617; --panel: #0f172a; --gold: #d4a017; --text: #f8fafc; }
+        body { background: var(--bg); color: var(--text); font-family: system-ui; text-align: center; padding: 20px; }
+        .card { background: var(--panel); border: 1px solid #d4a017; border-radius: 20px; padding: 25px; max-width: 500px; margin: auto; box-shadow: 0 0 20px rgba(212,160,23,0.2); }
+        .btn { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; transition: 0.3s; }
+        .btn:hover { transform: scale(1.02); opacity: 0.9; }
+        input { background: #020617; border: 1px solid #1e293b; color: white; padding: 12px; border-radius: 10px; width: 100%; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
+        h1 { color: var(--gold); margin-bottom: 5px; }
+        .status-tag { color: #22c55e; font-size: 14px; font-weight: bold; margin-bottom: 20px; display: block; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>👑 لوحة تحكم الملك فارس</h1>
-        <div class="card">
-            <div class="item"><span>الحالة الآن:</span> <span class="status">متصل بالسيرفر ✅</span></div>
-            <div class="item"><span>مكافحة الروابط (Anti-Link)</span> <input type="checkbox" id="antiLink" ${settings.antiLink ? 'checked' : ''} onchange="update('antiLink')"></div>
-            <div class="item"><span>الذكاء الاصطناعي (AI)</span> <input type="checkbox" id="ai" ${settings.aiChat ? 'checked' : ''} onchange="update('aiChat')"></div>
+    <div class="card">
+        <h1>👑 نظام الملك فارس</h1>
+        <span class="status-tag">النظام نشط ويعمل 24/7 ✅</span>
+        
+        <form action="/pair" method="POST">
+            <p style="font-size: 13px; color: #94a3b8;">أدخل رقمك الدولي للربط الفوري</p>
+            <input type="number" name="number" placeholder="967..." required>
+            <button type="submit" class="btn">استخراج كود الربط 🚀</button>
+        </form>
+        
+        <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #1e293b;">
+            <p style="font-size: 12px; color: #d4a017;">إعدادات التفاعل: نشطة تلقائياً ✨</p>
+            <button onclick="location.reload()" style="background:none; border:1px solid #1e293b; color:white; padding:8px 15px; border-radius:8px; cursor:pointer; font-size:12px;">تحديث النظام 🔄</button>
         </div>
-        <div class="card">
-            <div class="item"><span>إيموجي التفاعل</span> <input type="text" id="emoji" value="${settings.statusEmoji}" onchange="updateEmoji()"></div>
-        </div>
-        <div class="card pair-section">
-            <span style="color:var(--gold)">ربط رقم الواتساب بالكود</span>
-            <form action="/pair" method="POST" style="margin-top:10px;">
-                <input type="number" name="number" placeholder="967..." style="width:100%; margin-bottom:10px; box-sizing: border-box;" required>
-                <button type="submit" class="btn">استخراج كود الربط الآن 🚀</button>
-            </form>
-        </div>
-        <button class="btn" onclick="location.reload()" style="background:#475569; color:white;">تحديث الصفحة 🔄</button>
     </div>
-    <script>
-        function update(key) { fetch('/api/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key}) }); }
-        function updateEmoji() { const val = document.getElementById('emoji').value; fetch('/api/emoji', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({val}) }); }
-    </script>
 </body>
 </html>
     `);
 });
 
-// --- أوامر الـ API ---
-app.post('/api/update', (req, res) => { settings[req.body.key] = !settings[req.body.key]; res.json({success: true}); });
-app.post('/api/emoji', (req, res) => { settings.statusEmoji = req.body.val; res.json({success: true}); });
-
-// --- نظام الربط المطور ---
+// --- نظام الربط المطور لمعالجة تعليق الدخول ---
 app.post('/pair', async (req, res) => {
     let num = req.body.number.replace(/[^0-9]/g, '');
-    if (!num) return res.send("الرجاء إدخال الرقم بشكل صحيح");
+    if (!num) return res.send("خطأ: يرجى إدخال الرقم بشكل صحيح.");
     
     try {
-        if (fs.existsSync('./auth_info')) fs.emptyDirSync('./auth_info'); // تنظيف الجلسة لضمان تسجيل جديد
+        // تصفير الجلسة تماماً لضمان ربط "نظيف" بدون تعليق
+        if (fs.existsSync('./auth_info')) fs.emptyDirSync('./auth_info');
+        
         await startBot();
         
-        await new Promise(resolve => setTimeout(resolve, 8000)); // انتظار استقرار السيرفر
+        // مهلة استقرار السيرفر (أهم خطوة لضمان عدم قطع الاتصال)
+        await new Promise(resolve => setTimeout(resolve, 10000));
 
         if (sock) {
             const code = await sock.requestPairingCode(num);
             res.send(`
             <body style="background:#020617; color:white; text-align:center; padding-top:100px; font-family:sans-serif;">
-                <h2 style="color:#94a3b8;">كود الربط للرقم ${num}:</h2>
-                <h1 style="color:#d4a017; font-size:60px; letter-spacing:10px;">${code}</h1>
-                <p>أدخل الكود الآن وانتظر حتى يكتمل الربط في جوالك.</p>
-                <br><a href="/" style="color:#d4a017; text-decoration:none;">← العودة للوحة التحكم</a>
+                <h2 style="color:#94a3b8;">تم توليد الكود للرقم: ${num}</h2>
+                <h1 style="color:#d4a017; font-size:70px; letter-spacing:10px; margin: 20px 0;">${code}</h1>
+                <p style="color:#22c55e;">ضع الكود في جوالك الآن واترك هذه الصفحة مفتوحة حتى يكتمل الربط.</p>
+                <br><a href="/" style="color:#d4a017; text-decoration:none; font-weight:bold;">← العودة للرئيسية</a>
             </body>`);
         }
-    } catch (e) { res.send("فشل الاتصال، حاول مجدداً."); }
+    } catch (e) {
+        res.send("السيرفر مضغوط، يرجى المحاولة مرة أخرى بعد دقيقة.");
+    }
 });
 
 app.listen(port);
 
-// --- محرك البوت مع تعديلات المصادقة ---
+// --- محرك البوت ( Always Online Edition ) ---
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
@@ -119,31 +109,44 @@ async function startBot() {
         auth: state, 
         printQRInTerminal: false, 
         logger: pino({ level: "silent" }),
-        // تحديث نسخة المتصفح لتجنب تعليق تسجيل الدخول
-        browser: ["Ubuntu", "Chrome", "110.0.5481.177"], 
-        connectTimeoutMs: 60000, // زيادة وقت الانتظار
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000
+        // تحديث المتصفح لأحدث إصدار لضمان سرعة المصادقة
+        browser: ["Ubuntu", "Chrome", "114.0.5735.198"], 
+        connectTimeoutMs: 90000, // زيادة المهلة لـ 90 ثانية لمنع فشل الدخول
+        keepAliveIntervalMs: 30000,
+        generateHighQualityLinkPreview: true
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', (u) => { 
-        if (u.connection === 'open') console.log("✅ البوت متصل وشغال!");
-        if (u.connection === 'close') startBot();
+    sock.ev.on('connection.update', async (u) => { 
+        const { connection, lastDisconnect } = u;
+        if (connection === 'open') {
+            console.log("✅ الرقم مربوط الآن ويعمل بدون توقف!");
+            await sock.sendPresenceUpdate('available'); // إبقاء الرقم متصل دائماً
+        }
+        if (connection === 'close') {
+            const reason = lastDisconnect?.error?.output?.statusCode;
+            if (reason !== DisconnectionReason.loggedOut) {
+                console.log("🔄 إعادة اتصال تلقائية...");
+                startBot();
+            }
+        }
     });
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0]; if (!msg.message || msg.key.fromMe) return;
+        const msg = messages[0]; 
+        if (!msg.message || msg.key.fromMe) return;
         const from = msg.key.remoteJid;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
+        // 1. تفاعل الحالات الفوري
         if (from === 'status@broadcast') {
-            await delay(7000); await sock.readMessages([msg.key]);
+            await sock.readMessages([msg.key]);
             await sock.sendMessage(from, { react: { text: settings.statusEmoji, key: msg.key } }, { statusJidList: [msg.key.participant] });
             return;
         }
 
+        // 2. رد الذكاء الاصطناعي Gemini
         if (settings.aiChat) {
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
@@ -153,4 +156,5 @@ async function startBot() {
         }
     });
 }
+// بدء التشغيل التلقائي للسيرفر
 startBot();
