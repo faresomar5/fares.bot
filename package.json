@@ -1,18 +1,15 @@
 {
-  "name": "fares-bot-official",
+  "name": "whatsapp-status-bot-web",
   "version": "1.0.0",
-  "description": "WhatsApp Bot for King Fares",
+  "description": "WhatsApp Status Bot with Web Panel",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.18",
-    "express": "^4.19.2",
-    "pino": "^9.3.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "fs-extra": "^11.2.0",
-    "axios": "^1.6.0"
+    "@whiskeysockets/baileys": "^6.6.0",
+    "express": "^4.18.2",
+    "pino": "^8.14.1",
+    "qrcode-terminal": "^0.12.0"
   }
 }
