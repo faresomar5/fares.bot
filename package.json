@@ -1,20 +1,26 @@
 {
-  "name": "fares-bot-pairing",
+  "name": "king-fares-bot",
   "version": "1.0.0",
-  "description": "WhatsApp pairing code service with Express + Baileys for Render",
+  "description": "WhatsApp pairing server for King Fares Bot",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "engines": {
-    "node": ">=20"
-  },
+  "homepage": "https://fares-bot-eahg.onrender.com",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "^7.0.0-rc.6",
+    "@whiskeysockets/baileys": "^6.7.18",
     "cors": "^2.8.5",
-    "express": "^4.21.2",
-    "pino": "^9.5.0"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pino": "^9.3.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
