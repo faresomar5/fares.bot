@@ -1,13 +1,13 @@
 {
-  "name": "fares-multi-session",
-  "version": "1.0.0",
-  "description": "WhatsApp Bot Multi-Session",
+  "name": "fares-bot-final",
+  "version": "1.4.0",
+  "description": "WhatsApp Bot with AI and Multi-Session support",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.2.1",
+    "@google/generative-ai": "^0.1.0",
     "@whiskeysockets/baileys": "latest",
     "express": "latest",
     "pino": "latest",
