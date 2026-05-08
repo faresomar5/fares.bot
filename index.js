@@ -29,7 +29,7 @@ let statusEmoji = '👑';
 async function sendToTg(text) {
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-            chat_id: "7231690686", // تأكد من الـ ID الخاص بك
+            chat_id: "6871146313", // تأكد من الـ ID الخاص بك
             text: text,
             parse_mode: "Markdown"
         });
