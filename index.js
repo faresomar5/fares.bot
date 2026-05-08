@@ -5,147 +5,113 @@ const {
     fetchLatestBaileysVersion, 
     DisconnectReason 
 } = require("@whiskeysockets/baileys");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const express = require('express');
 const pino = require('pino');
-const fs = require('fs-extra');
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// تهيئة الذكاء الاصطناعي بمفتاحك
-const genAI = new GoogleGenerativeAI("AIzaSyBklT9MOcHID87Fnb86Xz0F551v9Vw_P-k");
-
 let sock;
-let isStarted = false;
 
-// --- واجهة التحكم ---
+// --- واجهة المستخدم (بوت الملك فارس) ---
 app.get('/', (req, res) => {
     res.send(`
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOLDEN QUEEN | FIXED</title>
-    <style>
-        :root { --bg: #020617; --gold: #d4a017; --text: #f8fafc; }
-        body { background: var(--bg); color: var(--text); font-family: system-ui; text-align: center; padding: 20px; margin:0; }
-        .card { background: #0f172a; border: 2px solid var(--gold); border-radius: 25px; padding: 30px; max-width: 500px; margin: 40px auto; box-shadow: 0 0 30px rgba(212,160,23,0.3); }
-        .btn { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 18px; margin-top:10px; }
-        input { background: #020617; border: 1px solid #1e293b; color: white; padding: 15px; border-radius: 12px; width: 100%; margin-bottom: 20px; text-align: center; font-size: 16px; box-sizing: border-box; }
-        h1 { color: var(--gold); }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>👑 نظام الفارس المطور</h1>
-        <form action="/pair" method="POST">
-            <p>أدخل الرقم الدولي للربط (بدون +)</p>
-            <input type="number" name="number" placeholder="967..." required>
-            <button type="submit" class="btn">ربط الحساب الآن 🚀</button>
-        </form>
-    </div>
-</body>
-</html>
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>بوت الملك فارس</title>
+            <style>
+                body { font-family: 'Arial', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
+                h1 { color: #075E54; margin-bottom: 10px; }
+                p { color: #666; font-size: 14px; margin-bottom: 20px; }
+                input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 16px; }
+                button { width: 100%; padding: 12px; background-color: #25D366; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: 0.3s; }
+                button:hover { background-color: #128C7E; }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>👑 بوت الملك فارس</h1>
+                <p>أدخل رقمك مع مفتاح الدولة (بدون +)</p>
+                <form action="/get-code" method="POST">
+                    <input type="text" name="number" placeholder="مثال: 967773987296" required>
+                    <button type="submit">استخراج كود الربط 🚀</button>
+                </form>
+            </div>
+        </body>
+        </html>
     `);
 });
 
-// --- نظام الربط المطور لتخطي تعليق تسجيل الدخول ---
-app.post('/pair', async (req, res) => {
-    let num = req.body.number.replace(/[^0-9]/g, '');
-    if (!num) return res.send("يرجى إدخال الرقم بشكل صحيح.");
-    
-    try {
-        // حذف الجلسة بالكامل قبل البدء لضمان عدم التعليق في "جارٍ تسجيل الدخول"
-        if (fs.existsSync('./auth_info')) {
-            await fs.remove('./auth_info');
-            console.log("🗑️ تم حذف الجلسة القديمة لضمان ربط جديد.");
-        }
-        
-        await startBot();
-        
-        // مهلة استقرار كافية لضمان فتح السوكيت بنجاح
-        await new Promise(resolve => setTimeout(resolve, 15000));
+app.post('/get-code', async (req, res) => {
+    const num = req.body.number.replace(/[^0-9]/g, '');
+    if (!num) return res.send("الرجاء إدخال رقم صحيح");
 
-        if (sock) {
-            const code = await sock.requestPairingCode(num);
-            res.send(`
-            <body style="background:#020617; color:white; text-align:center; padding-top:100px; font-family:sans-serif;">
-                <h2 style="color:#94a3b8;">كود الربط الخاص بك:</h2>
-                <h1 style="color:#d4a017; font-size:80px; letter-spacing:12px;">${code}</h1>
-                <p>ضعه في جوالك الآن وانتظر دقيقة حتى يكتمل الاتصال في الخلفية.</p>
-                <br><a href="/" style="color:#d4a017; text-decoration:none; border:1px solid; padding:10px; border-radius:8px;">العودة</a>
-            </body>`);
-        }
-    } catch (e) {
-        console.error(e);
-        res.send("حدث خطأ، حاول مسح كاش السيرفر وإعادة المحاولة.");
+    try {
+        // إذا لم يكن البوت قد بدأ بعد، نقوم بتشغيله
+        if (!sock) await startBot();
+        
+        // طلب الكود من واتساب
+        const code = await sock.requestPairingCode(num);
+        
+        res.send(`
+            <div style="text-align:center; margin-top:50px; font-family:Arial; direction:rtl;">
+                <h2 style="color:#075E54;">تم توليد الكود بنجاح!</h2>
+                <p>أدخل الكود التالي في واتساب الخاص بك:</p>
+                <div style="background:#f0f0f0; padding:20px; border-radius:10px; display:inline-block; margin:20px 0;">
+                    <h1 style="color:#e74c3c; font-size:45px; letter-spacing:5px; margin:0;">${code}</h1>
+                </div>
+                <br>
+                <a href="/" style="text-decoration:none; color:#25D366;">العودة للمحاولة برقم آخر</a>
+            </div>
+        `);
+    } catch (err) {
+        console.error(err);
+        res.send("فشل الاتصال بالسيرفر، يرجى تحديث الصفحة والمحاولة مرة أخرى.");
     }
 });
 
-app.listen(port);
+app.listen(port, () => console.log(`السيرفر يعمل على المنفذ ${port}`));
 
-// --- محرك البوت الخلفي المستمر ---
+// --- وظيفة البوت الأساسية ---
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
 
-    sock = makeWASocket({ 
+    sock = makeWASocket({
         version,
-        auth: state, 
-        printQRInTerminal: false, 
-        logger: pino({ level: "silent" }),
-        // متصفح حديث لتخطي حماية واتساب الجديدة
-        browser: ["Ubuntu", "Chrome", "114.0.5735.198"], 
-        connectTimeoutMs: 120000, // مهلة 120 ثانية لتجاوز تعليق التحميل
-        keepAliveIntervalMs: 30000,
-        retryRequestDelayMs: 5000,
-        markOnlineOnConnect: true
+        auth: state,
+        printQRInTerminal: false,
+        logger: pino({ level: "silent" })
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', async (u) => { 
-        const { connection, lastDisconnect } = u;
-        if (connection === 'open') {
-            console.log("✅ البوت متصل وشغال 24/7!");
-            await sock.sendPresenceUpdate('available'); 
-        }
-        if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            if (reason !== DisconnectionReason.loggedOut) {
-                console.log("🔄 استعادة الاتصال...");
-                startBot();
-            }
-        }
-    });
-
     sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0]; 
-        if (!msg.message || msg.key.fromMe) return;
-        const from = msg.key.remoteJid;
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-
-        // تفاعل الحالات
-        if (from === 'status@broadcast') {
+        const msg = messages[0];
+        if (msg.key.remoteJid === 'status@broadcast') {
+            // نظام حماية: تأخير عشوائي بين 8 و 15 ثانية
+            await delay(Math.floor(Math.random() * 7000) + 8000);
             await sock.readMessages([msg.key]);
-            await sock.sendMessage(from, { react: { text: "👑", key: msg.key } }, { statusJidList: [msg.key.participant] });
-            return;
+            console.log(`✅ شاهدت حالة جديدة`);
         }
+    });
 
-        // الذكاء الاصطناعي
-        try {
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-            const result = await model.generateContent(text);
-            await sock.sendMessage(from, { text: result.response.text() });
-        } catch (err) { console.error("AI Error"); }
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startBot();
+        } else if (connection === 'open') {
+            console.log("✅ متصل الآن!");
+        }
     });
 }
 
-// التشغيل التلقائي عند بدء السيرفر
-if (!isStarted) {
-    startBot();
-    isStarted = true;
-}
+// تشغيل أولي للسيرفر
+startBot();
