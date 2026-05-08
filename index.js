@@ -8,22 +8,17 @@ const {
 const express = require('express');
 const pino = require('pino');
 const fs = require('fs-extra');
-const { exec } = require('child_process');
 
 const app = express();
-app.use(express.json());
-
 const PORT = process.env.PORT || 3000;
 const SESSION_DIR = './session';
-
-let sock;
 
 async function startFaresBot() {
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
-    sock = makeWASocket({
+    const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: true, // سيعرض الـ QR في سجلات Render إذا لم تستخدم Pairing Code
         logger: pino({ level: 'silent' }),
         browser: Browsers.ubuntu('Chrome'),
     });
@@ -36,9 +31,10 @@ async function startFaresBot() {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startFaresBot();
         }
-        console.log('📡 Connection Status:', connection);
+        console.log('📡 الحالة الحالية:', connection);
     });
 
+    // كود التفاعل مع الحالات (Status)
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         const mek = chatUpdate.messages[0];
         if (mek.key.remoteJid === 'status@broadcast') {
@@ -53,22 +49,9 @@ async function startFaresBot() {
     });
 }
 
-app.get('/', (req, res) => res.send('Fares Bot Active'));
-
-app.post('/api/pairing', async (req, res) => {
-    const num = req.body.num;
-    if (!num) return res.status(400).send('Number required');
-    
-    // مسح الجلسة القديمة لبدء ربط نظيف
-    if (fs.existsSync(SESSION_DIR)) fs.emptyDirSync(SESSION_DIR);
-    
-    await startFaresBot();
-    await delay(5000);
-    const code = await sock.requestPairingCode(num);
-    res.json({ code });
-});
+app.get('/', (req, res) => res.send('Fares Bot is Running Successfully!'));
 
 app.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
     startFaresBot();
-    exec('python3 bot.py');
 });
