@@ -1,65 +1,64 @@
 import logging
 import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
-# الإعدادات الأساسية
 TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I"
-API_URL = "https://fares-bot-eahg.onrender.com/api/pairing" # رابط موقعك المربوط
+BASE_URL = "https://fares-bot-eahg.onrender.com"
 
-# إعداد السجلات
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """رسالة الترحيب عند تشغيل البوت"""
-    user_name = update.effective_user.first_name
-    message = (
-        f"👋 أهلاً بك يا {user_name} في بوت الملك فارس.\n\n"
-        "🚀 هذا البوت يساعدك على ربط رقمك بالخدمة واستخراج كود الاقتران.\n\n"
-        "📱 **للبدء:** أرسل رقم هاتفك مع رمز الدولة (مثال: 967771xxxxxx)"
-    )
-    await update.message.reply_text(message)
+    keyboard = [
+        [InlineKeyboardButton("🎭 تغيير إيموجي التفاعل", callback_data='change_emoji')],
+        [InlineKeyboardButton("🗑️ حذف الجلسة والربط", callback_data='logout')],
+        [InlineKeyboardButton("📊 حالة البوت", callback_data='status')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("📱 **لوحة تحكم فارس المحدثة**\nاختر من الأزرار أدناه:", reply_markup=reply_markup, parse_mode="Markdown")
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == 'change_emoji':
+        context.user_data['awaiting_emoji'] = True
+        await query.edit_message_text("📝 أرسل الإيموجي الجديد الذي تريده الآن (مثال: 🔥 أو ❤️):")
+    
+    elif query.data == 'logout':
+        requests.post(f"{BASE_URL}/api/logout")
+        await query.edit_message_text("✅ تم حذف الجلسة وفصل الرقم.")
+        
+    elif query.data == 'status':
+        await query.message.reply_text("🚀 البوت شغال ومستقر حالياً.")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """معالجة رقم الهاتف المرسل"""
-    number = update.message.text.strip()
+    text = update.message.text.strip()
     
-    # التحقق من أن المدخلات أرقام فقط
-    if not number.isdigit() or len(number) < 8:
-        await update.message.reply_text("❌ خطأ: يرجى إرسال رقم هاتف صحيح مع رمز الدولة بدون (+) أو أصفار في البداية.")
+    # التحقق إذا كان المستخدم بصدد تغيير الإيموجي
+    if context.user_data.get('awaiting_emoji'):
+        res = requests.post(f"{BASE_URL}/api/update-emoji", json={"emoji": text})
+        if res.status_code == 200:
+            await update.message.reply_text(f"✅ تم بنجاح! الإيموجي الجديد هو: {text}")
+        else:
+            await update.message.reply_text("❌ حدث خطأ أثناء تحديث الإيموجي.")
+        context.user_data['awaiting_emoji'] = False
         return
 
-    msg = await update.message.reply_text("⏳ جاري الاتصال بالسيرفر وتوليد الكود... يرجى الانتظار (قد يستغرق الأمر 10 ثوانٍ)")
-
-    try:
-        # إرسال الطلب لموقعك على Render
-        response = requests.post(API_URL, json={"num": number}, timeout=20)
-        data = response.json()
-
-        if data.get("success") and data.get("code"):
-            pairing_code = data.get("code")
-            final_msg = (
-                "✅ **تم توليد كود الربط بنجاح!**\n\n"
-                f"🔢 الكود هو: `{pairing_code}`\n\n"
-                "ℹ️ قم بنسخ الكود وضعه في إشعار 'ربط جهاز جديد' الذي سيظهر في واتساب الخاص بك."
-            )
-            await msg.edit_text(final_msg, parse_mode="Markdown")
-        else:
-            await msg.edit_text("❌ فشل السيرفر في توليد الكود. تأكد أن الرقم غير مرتبط ببوت آخر حالياً.")
-    
-    except Exception as e:
-        logging.error(f"Error: {e}")
-        await msg.edit_text("⚠️ خطأ في الاتصال بالسيرفر. تأكد أن موقع Render يعمل حالياً وليس في وضع النوم.")
+    # إذا كان النص رقماً، يتم طلب كود الربط
+    if text.isdigit():
+        msg = await update.message.reply_text("⏳ جاري توليد كود الربط...")
+        res = requests.post(f"{BASE_URL}/api/pairing", json={"num": text})
+        data = res.json()
+        if data.get("success"):
+            await msg.edit_text(f"🔢 كود الربط: `{data.get('code')}`", parse_mode="Markdown")
 
 def main():
-    """تشغيل البوت"""
-    application = Application.builder().token(TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    print("✅ بوت التليجرام يعمل الآن...")
-    application.run_polling()
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
 
 if __name__ == '__main__':
     main()
