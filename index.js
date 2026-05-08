@@ -1,120 +1,78 @@
-require('dotenv').config();
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    DisconnectReason,
-    Browsers,
-    delay
-} = require('@whiskeysockets/baileys');
-const express = require('express');
-const pino = require('pino');
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
-const { exec } = require('child_process');
+const { default: makeWASocket, useMultiFileAuthState, Browsers, delay } = require("@whiskeysockets/baileys");
+const express = require("express");
+const fs = require("fs-extra");
+const pino = require("pino");
 
 const app = express();
 app.use(express.json());
-
 const PORT = process.env.PORT || 3000;
-const SESSION_DIR = './session';
-const MY_URL = 'https://fares-bot-eahg.onrender.com';
-const TELEGRAM_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I";
 
-let sock;
-let statusEmoji = '👑'; 
+// الواجهة التي ستظهر لك عند فتح الرابط
+app.get("/", (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <title>بوت الملك فارس 👑</title>
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b141a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                .container { background-color: #111b21; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; width: 90%; max-width: 400px; border-top: 5px solid #25d366; }
+                input { width: 80%; padding: 12px; margin: 20px 0; border: none; border-radius: 8px; background: #2a3942; color: white; font-size: 16px; text-align: center; }
+                button { background-color: #25d366; color: #0b141a; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+                #result { margin-top: 25px; font-size: 22px; font-weight: bold; color: #ffd700; letter-spacing: 3px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>👑 بوت الملك فارس</h2>
+                <p>أدخل رقمك للحصول على كود الربط</p>
+                <input type="text" id="number" placeholder="مثال: 967777777777">
+                <br>
+                <button onclick="getCode()">طلب كود الربط 🔢</button>
+                <div id="result"></div>
+            </div>
+            <script>
+                async function getCode() {
+                    const num = document.getElementById('number').value;
+                    const resDiv = document.getElementById('result');
+                    if(!num) return alert("يرجى إدخال الرقم أولاً");
+                    resDiv.innerText = "⏳ جاري طلب الكود...";
+                    try {
+                        const response = await fetch('/api/pairing', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({num})
+                        });
+                        const data = await response.json();
+                        resDiv.innerText = data.code || "❌ خطأ في الرقم";
+                    } catch (e) { resDiv.innerText = "❌ فشل الاتصال"; }
+                }
+            </script>
+        </body>
+        </html>
+    `);
+});
 
-// نظام التنبيه الفوري للتليجرام
-async function sendToTg(text) {
-    try {
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-            chat_id: "6871146313", // تأكد من الـ ID الخاص بك
-            text: text,
-            parse_mode: "Markdown"
-        });
-    } catch (e) {}
-}
-
-async function startFaresBot(clear = false) {
-    if (clear && fs.existsSync(SESSION_DIR)) { await fs.emptyDir(SESSION_DIR); }
-    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-    const { version } = await fetchLatestBaileysVersion();
-
-    sock = makeWASocket({
-        version,
+app.post("/api/pairing", async (req, res) => {
+    const { num } = req.body;
+    // تنظيف الجلسة القديمة لضمان عمل الكود
+    if (fs.existsSync('./session')) fs.emptyDirSync('./session');
+    
+    const { state, saveCreds } = await useMultiFileAuthState('./session');
+    const sock = makeWASocket({
         auth: state,
-        logger: pino({ level: 'silent' }),
-        browser: Browsers.macOS('Desktop'), // محاكاة تصفح ديسكتوب للاستقرار
-        syncFullHistory: false,
-        markOnlineOnConnect: true,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000, // نبض داخلي كل 10 ثواني
+        logger: pino({ level: "silent" }),
+        browser: Browsers.ubuntu("Chrome")
     });
 
-    sock.ev.on('creds.update', saveCreds);
-
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'open') {
-            console.log('✅ متصل');
-            await sendToTg("🚀 **البوت متصل الآن وسيبدأ التفاعل التلقائي!**");
-        }
-        if (connection === 'close') {
-            const code = lastDisconnect?.error?.output?.statusCode;
-            if (code !== DisconnectReason.loggedOut) {
-                console.log('🔄 إعادة اتصال تلقائي...');
-                setTimeout(() => startFaresBot(), 2000);
-            }
-        }
-    });
-
-    // ⚡ محرك التفاعل النهائي (حل مشكلة عدم الإعجاب)
-    sock.ev.on('messages.upsert', async (chatUpdate) => {
-        try {
-            const mek = chatUpdate.messages[0];
-            if (!mek || !mek.message || mek.key.fromMe) return;
-            const from = mek.key.remoteJid;
-
-            if (from === 'status@broadcast') {
-                // 1. قراءة الحالة (Seen)
-                await sock.readMessages([mek.key]);
-                
-                // 2. تأخير عشوائي بين 2-5 ثواني لمنع الحظر والجمود
-                await delay(Math.floor(Math.random() * 3000) + 2000);
-
-                // 3. التفاعل المباشر باستخدام الـ Participant ID
-                await sock.sendMessage(from, { 
-                    react: { key: mek.key, text: statusEmoji } 
-                }, { 
-                    statusJidList: [mek.key.participant] 
-                });
-                
-                console.log(`✅ تم التفاعل مع حالة: ${mek.pushName || 'مستخدم'}`);
-            }
-        } catch (e) { console.error("توقف مؤقت في التفاعل:", e.message); }
-    });
-}
-
-// نقاط التحكم (API)
-app.get('/', (req, res) => res.send('Fares Bot Active 24/7'));
-app.post('/api/logout', async (req, res) => {
-    if (fs.existsSync(SESSION_DIR)) { await fs.emptyDir(SESSION_DIR); if (sock) sock.logout(); res.json({ success: true }); }
-});
-app.post('/api/update-emoji', (req, res) => { if (req.body.emoji) { statusEmoji = req.body.emoji; res.json({ success: True }); } });
-app.post('/api/pairing', async (req, res) => {
-    const num = req.body.num;
-    await startFaresBot(true);
-    await delay(10000);
-    const code = await sock.requestPairingCode(num);
-    res.json({ success: true, code });
+    sock.ev.on("creds.update", saveCreds);
+    
+    try {
+        await delay(5000); // وقت مستقطع لضمان استقرار الطلب
+        let code = await sock.requestPairingCode(num);
+        res.json({ code });
+    } catch (err) { res.json({ error: true }); }
 });
 
-app.listen(PORT, () => {
-    console.log('Server Running');
-    startFaresBot();
-    exec('python3 bot.py');
-    // نبض ذاتي كل 45 ثانية لمنع Render من النوم
-    setInterval(() => { axios.get(MY_URL).catch(() => {}); }, 45000);
-});
+app.listen(PORT, () => console.log("Server Active"));
