@@ -127,3 +127,9 @@ app.listen(PORT, () => {
     startFaresBot();
     keepAlive();
 });
+const { exec } = require('child_process');
+exec('python3 bot.py', (err, stdout, stderr) => {
+    if (err) { console.error("Telegram Bot Error:", err); return; }
+    print(stdout);
+});
+
