@@ -4,7 +4,8 @@ const {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
     DisconnectReason,
-    Browsers
+    Browsers,
+    makeCacheableSignalKeyStore
 } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
@@ -22,8 +23,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_DIR = './session';
 
 let sock;
-let statusEmoji = '💤'; // إيموجي التفاعل الافتراضي
-const developerNumber = '967xxxxxxxxx@s.whatsapp.net'; // استبدله برقمك
+let statusEmoji = '💤'; // إيموجي التفاعل الافتراضي مع الحالات
 
 async function startFaresBot(clearSession = false) {
     if (clearSession && fs.existsSync(SESSION_DIR)) {
@@ -35,115 +35,110 @@ async function startFaresBot(clearSession = false) {
 
     sock = makeWASocket({
         version,
-        auth: state,
+        auth: {
+            creds: state.creds,
+            // نظام حماية المفاتيح لمنع فصل الجلسة السريع
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+        },
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome'), 
+        browser: Browsers.ubuntu('Chrome'), // محاكاة متصفح مستقر للربط
+        syncFullHistory: false,
+        markOnlineOnConnect: true,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // --- كود البقاء مستيقظاً 24 ساعة ---
+    // نظام منع خمول السيرفر (بقاء السيرفر نشط 24 ساعة)
     setInterval(() => {
         axios.get(`https://fares-bot-eahg.onrender.com`).catch(() => {});
-    }, 5 * 60 * 1000); // بينغ كل 5 دقائق
+    }, 4 * 60 * 1000); // تنبيه كل 4 دقائق
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startFaresBot();
+            if (shouldReconnect) {
+                console.log('🔄 إعادة الاتصال تلقائياً...');
+                startFaresBot();
+            }
         }
-        console.log('حالة الاتصال:', connection);
+        console.log('📡 حالة الاتصال الحالية:', connection);
     });
 
+    // نظام التفاعل مع الحالات والأوامر
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
-            if (!mek.message) return;
+            if (!mek.message || mek.key.fromMe) return;
 
             const from = mek.key.remoteJid;
-            const body = mek.message.conversation || 
-                         mek.message.extendedTextMessage?.text || 
-                         mek.message.imageMessage?.caption || "";
+            const participant = mek.key.participant || mek.key.remoteJid;
 
-            const command = body.toLowerCase().trim();
-            const args = body.split(' ');
-
-            // 1. التفاعل التلقائي مع الحالة + رد المطور
-            if (from === 'status@broadcast' && !mek.key.fromMe) {
-                // وضع الإيموجي المطلوب
-                await sock.sendMessage(from, { react: { text: statusEmoji, key: mek.key } }, { statusJidList: [mek.key.participant] });
-                // رد تلقائي للمطور (يرسل لمن شاهد البوت حالته)
-                await sock.sendMessage(mek.key.participant, { text: 'تمت مشاهدة حالتك بنجاح بواسطة بوت الملك فارس 💤' });
+            // 1. مشاهدة الحالة والتفاعل معها فوراً
+            if (from === 'status@broadcast') {
+                await sock.readMessages([mek.key]); // تسجيل مشاهدة الحالة
+                await sock.sendMessage(from, { 
+                    react: { text: statusEmoji, key: mek.key } 
+                }, { statusJidList: [participant] });
+                return;
             }
 
-            // 2. تغيير إيموجي التفاعل من داخل الواتساب
-            if (command.startsWith('تغيير الايموجي')) {
-                const newEmoji = args.slice(2).join(' ');
-                if (newEmoji) {
-                    statusEmoji = newEmoji;
-                    await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي الحالة إلى: ${statusEmoji}` });
-                }
-            }
+            const body = (mek.message.conversation || mek.message.extendedTextMessage?.text || "").trim();
+            const command = body.toLowerCase();
 
-            // 3. أمر الربط (بوت + رقم)
-            if (command.startsWith('بوت')) {
-                const num = args[1];
-                if (!num) return await sock.sendMessage(from, { text: '❌ يرجى كتابة الرقم، مثال: بوت 967xxxxxxxxx' });
-                try {
-                    const tempSock = makeWASocket({ auth: state, logger: pino({ level: 'silent' }) });
-                    const code = await tempSock.requestPairingCode(num);
-                    await sock.sendMessage(from, { text: `✅ كود الربط للرقم ${num} هو: *${code}*` });
-                } catch {
-                    await sock.sendMessage(from, { text: '❌ تعذر استخراج الكود حالياً.' });
-                }
-            }
-
-            // 4. تحميل انستقرام وتيك توك
-            if (command.includes('tiktok.com') || command.includes('instagram.com')) {
-                await sock.sendMessage(from, { text: '⏳ جاري التحميل...' });
-                try {
-                    // ملاحظة: تحتاج لاستخدام API تحميل خارجي هنا، هذا مثال للمنطق
-                    await sock.sendMessage(from, { text: '✅ تم استلام الرابط، جاري المعالجة والارسال...' });
-                } catch (e) { await sock.sendMessage(from, { text: '❌ فشل التحميل.' }); }
-            }
-
-            // 5. أمر الأوامر الشامل
+            // 2. قائمة الأوامر
             if (command === 'الاوامر' || command === 'الأوامر') {
-                const list = `👑 *أوامر بوت الملك فارس المطورة* 👑\n\n` +
-                             `• *بوت [الرقم]* : استخراج كود ربط جديد.\n` +
-                             `• *تغيير الايموجي [الشكل]* : لتعديل تفاعل الحالة.\n` +
-                             `• *فارس* : للترحيب.\n` +
-                             `• *فحص* : حالة الاتصال.\n` +
-                             `• *موقعي* : بوابة الربط.\n\n` +
-                             `💡 البوت يعمل الآن 24 ساعة ويتفاعل مع الحالات تلقائياً بـ ${statusEmoji}.`;
+                const list = `👑 *أوامر بوت الملك فارس* 👑\n\n` +
+                             `• *فارس*: ترحيب الملك.\n` +
+                             `• *فحص*: حالة الاتصال.\n` +
+                             `• *تنشيط*: إعادة تشغيل البوت.\n` +
+                             `• *ايموجي [الشكل]*: تغيير تفاعل الحالة.\n` +
+                             `• *موقعي*: رابط بوابة الربط.`;
                 await sock.sendMessage(from, { text: list });
             }
 
-        } catch (err) { console.log(err); }
+            if (command === 'فارس') {
+                await sock.sendMessage(from, { text: '👑 نعم يا ملك، البوت في خدمتك!' });
+            }
+
+            if (command.startsWith('ايموجي')) {
+                const emo = body.split(' ')[1];
+                if (emo) {
+                    statusEmoji = emo;
+                    await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي التفاعل إلى: ${statusEmoji}` });
+                }
+            }
+
+        } catch (err) {
+            console.error('خطأ في معالجة الرسالة:', err);
+        }
     });
 
     return sock;
 }
 
-// تعديل واجهة الدخول لضمان ظهور الصفحة
+// مسارات واجهة الويب
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.post('/api/pairing', async (req, res) => {
-    const num = req.body.num;
+    let num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
+    num = num.replace(/[^0-9]/g, '');
+
     try {
         await startFaresBot(true);
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 6000));
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
-    } catch (err) { res.status(500).json({ error: 'خطأ' }); }
+    } catch (err) {
+        res.status(500).json({ error: 'فشل استخراج الكود' });
+    }
 });
 
 app.listen(PORT, () => {
-    console.log(`السيرفر يعمل 24/7`);
+    console.log(`✅ السيرفر يعمل الآن على منفذ ${PORT}`);
     startFaresBot();
 });
