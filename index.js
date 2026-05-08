@@ -16,7 +16,6 @@ const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
-// هذا السطر هو المسؤول عن إظهار واجهة الموقع من مجلد public
 app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
@@ -24,7 +23,7 @@ const SESSION_DIR = './session';
 const MY_URL = 'https://fares-bot-eahg.onrender.com';
 
 let sock;
-let statusEmoji = '👑';
+let statusEmoji = '👑'; // الإيموجي الذي سيظهر على كل أنواع الاستوريات
 
 function keepAlive() {
     setInterval(() => {
@@ -50,6 +49,7 @@ async function startFaresBot(clear = false) {
     });
 
     sock.ev.on('creds.update', saveCreds);
+
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
@@ -58,42 +58,34 @@ async function startFaresBot(clear = false) {
         }
     });
 
+    // ⚡ محرك التفاعل الشامل مع كافة أنواع الاستوريات
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
             if (!mek.message) return;
             const from = mek.key.remoteJid;
 
+            // التفاعل مع أي استوري (نص، صورة، فيديو، إلخ)
             if (from === 'status@broadcast') {
+                // مشاهدة الاستوري أولاً
                 await sock.readMessages([mek.key]);
-                await sock.sendMessage(from, { react: { key: mek.key, text: statusEmoji } }, { statusJidList: [mek.key.participant] });
+                
+                // التفاعل بالإيموجي (سيعمل مع الكل تلقائياً)
+                await sock.sendMessage(from, { 
+                    react: { 
+                        key: mek.key, 
+                        text: statusEmoji 
+                    } 
+                }, { 
+                    statusJidList: [mek.key.participant] 
+                });
+                
+                return;
             }
 
+            // أوامر التحكم (عبر هاتفك المربوط)
             const body = mek.message.conversation || mek.message.extendedTextMessage?.text || "";
-            if (body.toLowerCase() === 'فحص') {
-                await sock.sendMessage(from, { text: '🚀 بوت الملك فارس متصل والواجهة تعمل!' }, { quoted: mek });
-            }
-        } catch (e) {}
-    });
-}
-
-// تشغيل الواجهة عند الدخول للرابط الرئيسي
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.post('/api/pairing', async (req, res) => {
-    const num = req.body.num;
-    if (!num) return res.status(400).json({ error: 'num required' });
-    try {
-        await startFaresBot(true);
-        await new Promise(r => setTimeout(r, 7000));
-        const code = await sock.requestPairingCode(num);
-        res.json({ success: true, code });
-    } catch (err) { res.status(500).json({ error: 'fail' }); }
-});
-
-app.listen(PORT, () => {
-    startFaresBot();
-    keepAlive();
-});
+            
+            // تغيير الإيموجي: اكتب "ايموجي ❤️"
+            if (body.startsWith('ايموجي ')) {
+                const new
