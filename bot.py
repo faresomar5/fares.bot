@@ -1,57 +1,60 @@
 import httpx
+import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # --- الإعدادات ---
-# ضع توكن البوت الخاص بك هنا
 BOT_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I"
-
-# رابط موقعك على Render الذي يحتوي على ملف Node.js
-# لاحظ أننا نستخدم الرابط الخارجي الكامل ليتمكن البوت الخارجي من الوصول إليه
-BASE_URL = "https://fares-bot-eahg.onrender.com"
+# الرابط الجديد الذي زودتني به
+API_URL = "https://bot.goldenqueen.store/api/pairing"
 
 async def get_pairing_code(phone):
-    # تنظيف الرقم
+    # تنظيف الرقم من المسافات والرموز
     clean_phone = phone.replace('+', '').replace(' ', '').replace('-', '')
-    url = f"{BASE_URL}/pairing?number={clean_phone}"
+    
+    # بناء الرابط مع الرقم المطللوب
+    # ملاحظة: تم استخدام باراميتر ?number= بناءً على نظامك السابق
+    url = f"{API_URL}?number={clean_phone}"
     
     async with httpx.AsyncClient() as client:
         try:
-            # تنبيه الموقع (Render) للاستيقاظ إذا كان خاملاً
-            # هذه الخطوة ضرورية لأنك تستخدم Render Free Tier
-            print("⏳ جاري إيقاظ سيرفر Render...")
-            await client.get(BASE_URL, timeout=20.0)
-            
-            # طلب كود الربط
-            print(f"📡 جاري طلب الكود للرقم {clean_phone} من Render...")
-            response = await client.get(url, timeout=100.0)
+            print(f"📡 جاري طلب الكود للرقم {clean_phone} من السيرفر الجديد...")
+            # مهلة انتظار 60 ثانية
+            response = await client.get(url, timeout=60.0)
             
             if response.status_code == 200:
-                return response.json().get('code')
+                data = response.json()
+                # جلب الكود من استجابة الـ JSON
+                return data.get('code')
+            else:
+                print(f"❌ خطأ من السيرفر: {response.status_code}")
         except Exception as e:
-            print(f"❌ خطأ في الاتصال بموقع Render: {e}")
+            print(f"❌ خطأ في الاتصال: {e}")
     return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحباً بك! أرسل رقم الواتساب مع رمز الدولة (مثال: 967771163825):")
+    await update.message.reply_text(
+        "مرحباً بك يا فارس! البوت يعمل الآن بالرابط الجديد 🚀\n\n"
+        "أرسل رقم الواتساب (مثال: 967771163825):"
+    )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = update.message.text.strip()
-    msg = await update.message.reply_text("⏳ جاري التواصل مع السيرفر وتوليد الكود... انتظر قليلاً.")
+    msg = await update.message.reply_text("⏳ جاري التواصل مع السيرفر وتوليد الكود...")
     
     code = await get_pairing_code(phone)
     
     if code:
-        await msg.edit_text(f"✅ كود الربط الخاص بك:\n\n`{code}`", parse_mode='Markdown')
+        await msg.edit_text(f"✅ كود الربط الخاص بك هو:\n\n`{code}`", parse_mode='Markdown')
     else:
-        await msg.edit_text("❌ السيرفر لم يستجب. تأكد أن موقع Render يعمل أو حاول مرة أخرى.")
+        await msg.edit_text("❌ لم يتم استلام الكود من السيرفر. تأكد من صحة الرقم أو جرب لاحقاً.")
 
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🚀 البوت يعمل الآن على الاستضافة الخارجية ومتصل بـ Render...")
+    print("🚀 البوت بدأ العمل على السيرفر الجديد...")
     application.run_polling()
 
 if __name__ == '__main__':
