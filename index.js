@@ -91,6 +91,21 @@ async function startFaresBot(clear = false) {
                 });
                 return;
             }
+// ... (الأكواد السابقة كما هي)
+
+// نقطة وصول لتحديث الإيموجي من التليجرام
+app.post('/api/update-emoji', (req, res) => {
+    const { emoji } = req.body;
+    if (emoji) {
+        statusEmoji = emoji;
+        console.log(`✅ تم تحديث الإيموجي إلى: ${statusEmoji}`);
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ error: 'no emoji' });
+    }
+});
+
+// ... (بقية ملف index.js كما في الرد السابق)
 
             const body = mek.message.conversation || mek.message.extendedTextMessage?.text || "";
             if (body.startsWith('ايموجي ')) {
