@@ -1,23 +1,17 @@
 {
-  "name": "king-fares-pairing-server",
+  "name": "fares-bot-official",
   "version": "1.0.0",
-  "private": true,
-  "description": "WhatsApp pairing and QR API server for King Fares Bot",
+  "description": "WhatsApp Bot for King Fares",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.18",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "pino": "^9.3.2",
-    "qrcode": "^1.5.4"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.4"
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0"
   }
 }
