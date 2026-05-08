@@ -4,8 +4,7 @@ const {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
     DisconnectReason,
-    Browsers,
-    jidDecode
+    Browsers
 } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
@@ -18,13 +17,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// إعداد مسار المجلد العام للواجهة
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+
 const PORT = process.env.PORT || 3000;
 const SESSION_DIR = './session';
 
-// متغيرات التحكم
 let sock;
 let statusEmoji = '💤'; // الإيموجي الافتراضي للتفاعل مع الحالة
-const ownerNumber = '967xxxxxxxxx@s.whatsapp.net'; // ضع رقمك هنا بدون (+) مع إضافة @s.whatsapp.net
 
 async function startFaresBot(clearSession = false) {
     if (clearSession && fs.existsSync(SESSION_DIR)) {
@@ -39,36 +40,15 @@ async function startFaresBot(clearSession = false) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome'), 
-        patchMessageBeforeSending: (message) => {
-            const requiresPatch = !!(
-                message.buttonsMessage ||
-                message.templateMessage ||
-                message.listMessage
-            );
-            if (requiresPatch) {
-                message = {
-                    viewOnceMessage: {
-                        message: {
-                            messageContextInfo: {
-                                deviceListMetadata: {},
-                                deviceListMetadataVersion: 2
-                            },
-                            ...message
-                        }
-                    }
-                };
-            }
-            return message;
-        }
+        browser: Browsers.ubuntu('Chrome'),
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // نظام البقاء متصلاً 24 ساعة (Self-Ping)
+    // نظام البقاء متصلاً 24 ساعة
     setInterval(() => {
         axios.get(`https://fares-bot-eahg.onrender.com`).catch(() => {});
-    }, 5 * 60 * 1000); // كل 5 دقائق
+    }, 5 * 60 * 1000);
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
@@ -76,7 +56,7 @@ async function startFaresBot(clearSession = false) {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startFaresBot();
         }
-        console.log('حالة البوت:', connection);
+        console.log('حالة الاتصال:', connection);
     });
 
     sock.ev.on('messages.upsert', async (chatUpdate) => {
@@ -93,115 +73,89 @@ async function startFaresBot(clearSession = false) {
             const command = body.toLowerCase().trim();
             const args = body.split(' ');
 
-            // --- 1. التفاعل مع الحالات (Status) ---
+            // --- التفاعل مع الحالات ورد المطور ---
             if (from === 'status@broadcast' && !isMe) {
-                // التفاعل بالإيموجي المختار
                 await sock.sendMessage(from, { react: { text: statusEmoji, key: mek.key } }, { statusJidList: [mek.key.participant] });
-                
-                // رد تلقائي للمطور عند مشاهدة الحالة
-                // يتم إرسال الرسالة لصاحب الحالة
-                await sock.sendMessage(mek.key.participant, { text: 'تمت مشاهدة حالتك بنجاح بواسطة بوت الملك فارس 👑' });
+                // رد تلقائي يرسل للشخص الذي نشر الحالة
+                await sock.sendMessage(mek.key.participant, { text: 'تمت مشاهدة حالتك بواسطة بوت الملك فارس 👑' });
             }
 
-            // --- 2. أوامر التحكم والاعدادات ---
-            
-            // تغيير إيموجي التفاعل (للمطور فقط)
+            // --- أوامر تغيير الإيموجي ---
             if (command.startsWith('تغيير الايموجي')) {
-                const newEmoji = args.slice(2).join(' ');
+                const newEmoji = args[2];
                 if (newEmoji) {
                     statusEmoji = newEmoji;
-                    await sock.sendMessage(from, { text: `✅ تم تغيير إيموجي التفاعل إلى: ${statusEmoji}` }, { quoted: mek });
+                    await sock.sendMessage(from, { text: `✅ تم تغيير إيموجي التفاعل إلى: ${statusEmoji}` });
                 }
             }
 
-            // أمر "بوت" لتوليد كود ربط لأي شخص
+            // --- أمر الربط (بوت [الرقم]) ---
             if (command.startsWith('بوت')) {
                 const targetNum = args[1];
-                if (!targetNum) return await sock.sendMessage(from, { text: '❌ يرجى كتابة الرقم مع مفتاح الدولة، مثال:\nبوت 967xxxxxxxxx' });
-                
-                await sock.sendMessage(from, { text: '⏳ جاري استخراج كود الربط، انتظر لحظة...' });
+                if (!targetNum) return await sock.sendMessage(from, { text: '❌ أرسل: بوت ثم رقم الهاتف' });
+                await sock.sendMessage(from, { text: '⏳ جاري استخراج كود الربط...' });
                 try {
                     let tempSock = makeWASocket({ auth: state, logger: pino({ level: 'silent' }) });
                     const code = await tempSock.requestPairingCode(targetNum.replace('+', ''));
-                    await sock.sendMessage(from, { text: `✅ كود الربط الخاص بك هو: *${code}*\nاستخدمه لربط رقمك بالبوت.` });
+                    await sock.sendMessage(from, { text: `✅ كود الربط الخاص بك: *${code}*` });
                 } catch (e) {
-                    await sock.sendMessage(from, { text: '❌ فشل استخراج الكود، تأكد من الرقم.' });
+                    await sock.sendMessage(from, { text: '❌ فشل استخراج الكود.' });
                 }
             }
 
-            // --- 3. أوامر التحميل (سوشيال ميديا) ---
-            
-            // تحميل تيك توك
+            // --- أوامر التحميل ---
             if (command.includes('tiktok.com')) {
-                await sock.sendMessage(from, { text: '⏳ جاري تحميل فيديو تيك توك...' });
                 try {
                     const res = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${command}`);
-                    await sock.sendMessage(from, { video: { url: res.data.video.noWatermark }, caption: 'تم التحميل بواسطة بوت الملك فارس 👑' });
-                } catch (e) {
-                    await sock.sendMessage(from, { text: '❌ عذراً، تعذر التحميل.' });
-                }
+                    await sock.sendMessage(from, { video: { url: res.data.video.noWatermark }, caption: 'تم التحميل بواسطة الملك فارس' });
+                } catch (e) { await sock.sendMessage(from, { text: '❌ خطأ في تحميل تيك توك' }); }
             }
 
-            // تحميل انستقرام
             if (command.includes('instagram.com')) {
-                await sock.sendMessage(from, { text: '⏳ جاري تحميل وسائط انستقرام...' });
                 try {
                     const res = await axios.get(`https://api.vreden.my.id/api/igdl?url=${command}`);
-                    const media = res.data.result[0].url;
-                    await sock.sendMessage(from, { video: { url: media }, caption: 'تم التحميل بواسطة بوت الملك فارس 👑' });
-                } catch (e) {
-                    await sock.sendMessage(from, { text: '❌ عذراً، تعذر التحميل من انستقرام.' });
-                }
+                    await sock.sendMessage(from, { video: { url: res.data.result[0].url }, caption: 'تم التحميل بواسطة الملك فارس' });
+                } catch (e) { await sock.sendMessage(from, { text: '❌ خطأ في تحميل انستقرام' }); }
             }
 
-            // --- 4. القائمة العامة والأوامر الأساسية ---
-            if (command === 'فحص' || command === 'test') {
-                await sock.sendMessage(from, { text: '✅ بوت الملك فارس يعمل بنجاح وبكامل ميزاته!' }, { quoted: mek });
-            }
-
-            if (command === 'فارس') {
-                await sock.sendMessage(from, { text: '👑 نعم يا ملك، أنا في الخدمة. اطلب ما تشاء!' }, { quoted: mek });
-            }
-
+            // --- قائمة الأوامر ---
             if (command === 'الاوامر' || command === 'الأوامر') {
-                const menu = `👑 *قائمة أوامر بوت الملك فارس المطورة* 👑\n\n` +
-                             `• *بوت [الرقم]*: لاستخراج كود ربط لرقمه.\n` +
-                             `• *فارس*: للترحيب.\n` +
-                             `• *فحص*: للتأكد من حالة الاتصال.\n` +
-                             `• *تغيير الايموجي [الإيموجي]*: لتغيير تفاعل الحالة.\n` +
-                             `• *ارسل رابط (تيك توك/انستا)*: للتحميل التلقائي.\n` +
-                             `• *الوقت*: لمعرفة وقت السيرفر.\n` +
-                             `• *موقعي*: رابط بوابة الربط الخاصة بك.\n\n` +
-                             `⚙️ *ميزات مفعلة*: التفاعل التلقائي مع الحالات (💤)، الرد التلقائي على أصحاب الحالات، البقاء متصلاً 24 ساعة.`;
-                await sock.sendMessage(from, { text: menu }, { quoted: mek });
+                const menu = `👑 *أوامر بوت الملك فارس* 👑\n\n` +
+                             `• *بوت [الرقم]*: كود ربط جديد.\n` +
+                             `• *تغيير الايموجي [الشكل]*: لتعديل تفاعل الحالة.\n` +
+                             `• *فحص*: فحص البوت.\n` +
+                             `• *التحميل*: أرسل رابط تيك توك أو انستا.\n` +
+                             `• *موقعي*: رابط الواجهة الخاصة بك.`;
+                await sock.sendMessage(from, { text: menu });
             }
 
             if (command === 'موقعي') {
-                await sock.sendMessage(from, { text: 'رابط موقعك: https://fares-bot-eahg.onrender.com' });
+                await sock.sendMessage(from, { text: 'https://fares-bot-eahg.onrender.com' });
             }
 
-        } catch (err) {
-            console.log('Error in messages:', err);
-        }
+        } catch (err) { console.log(err); }
     });
 
     return sock;
 }
+
+// --- مسارات السيرفر والواجهة ---
+app.get('/', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
 
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
     try {
         await startFaresBot(true);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(r => setTimeout(r, 5000));
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
-    } catch (err) {
-        res.status(500).json({ error: 'حدث خطأ في استخراج الكود' });
-    }
+    } catch (err) { res.status(500).json({ error: 'حدث خطأ' }); }
 });
 
 app.listen(PORT, () => {
-    console.log(`السيرفر يعمل على المنفذ ${PORT}`);
+    console.log(`السيرفر يعمل على منفذ ${PORT}`);
     startFaresBot();
 });
