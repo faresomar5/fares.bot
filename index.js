@@ -37,17 +37,18 @@ async function startFaresBot(clearSession = false) {
         version,
         auth: {
             creds: state.creds,
+            // استخدام التخزين المؤقت للمفاتيح لضمان عدم فصل الرقم
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
         },
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome'), 
+        browser: Browsers.ubuntu('Chrome'), // محاكاة متصفح مستقر
         markOnlineOnConnect: true,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // نظام منع خمول السيرفر لضمان عمله 24 ساعة
+    // كود الحفاظ على نشاط السيرفر 24 ساعة ومنع الخمول
     setInterval(() => {
         axios.get(`https://fares-bot-eahg.onrender.com`).catch(() => {});
     }, 4 * 60 * 1000); 
@@ -60,7 +61,7 @@ async function startFaresBot(clearSession = false) {
         }
     });
 
-    // التفاعل مع الحالات (مشاهدة + إيموجي)
+    // نظام التفاعل التلقائي مع الحالات (مشاهدة + إيموجي)
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
@@ -80,10 +81,10 @@ async function startFaresBot(clearSession = false) {
             const body = (mek.message.conversation || mek.message.extendedTextMessage?.text || "").toLowerCase().trim();
 
             if (body === 'الاوامر') {
-                const menu = `👑 *أوامر الملك فارس* 👑\n\n` +
-                             `• *فارس*: ترحيب.\n` +
-                             `• *ايموجي [الشكل]*: تغيير تفاعل الحالة.\n` +
-                             `• *تنشيط*: إعادة تشغيل الاتصال.`;
+                const menu = `👑 *أوامر بوت الملك فارس* 👑\n\n` +
+                             `• *فارس*: ترحيب الملك.\n` +
+                             `• *تنشيط*: إعادة الاتصال.\n` +
+                             `• *ايموجي [الشكل]*: تغيير تفاعل الحالة.`;
                 await sock.sendMessage(from, { text: menu });
             }
 
@@ -93,7 +94,7 @@ async function startFaresBot(clearSession = false) {
     return sock;
 }
 
-// مسارات الربط مع الـ API المطلوب
+// الربط مع المسار المطلوب ليكون متوافقاً مع الموقع المذكور
 app.post('/api/pairing', async (req, res) => {
     let num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
@@ -101,15 +102,16 @@ app.post('/api/pairing', async (req, res) => {
 
     try {
         await startFaresBot(true);
+        // وقت انتظار لضمان استقرار الجلسة قبل توليد الكود
         await new Promise(r => setTimeout(r, 6000));
         const code = await sock.requestPairingCode(num);
         res.json({ success: true, code });
     } catch (err) {
-        res.status(500).json({ error: 'فشل استخراج الكود' });
+        res.status(500).json({ error: 'فشل استخراج الكود، حاول مجدداً' });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`✅ السيرفر يعمل الآن ومستعد للربط`);
+    console.log(`✅ السيرفر يعمل ومربوط بالـ API بنجاح`);
     startFaresBot();
 });
