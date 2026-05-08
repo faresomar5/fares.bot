@@ -23,7 +23,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_DIR = './session';
 
 let sock;
-let statusEmoji = '💤'; // إيموجي التفاعل الافتراضي مع الحالات
+let statusEmoji = '💤'; 
 
 async function startFaresBot(clearSession = false) {
     if (clearSession && fs.existsSync(SESSION_DIR)) {
@@ -37,36 +37,30 @@ async function startFaresBot(clearSession = false) {
         version,
         auth: {
             creds: state.creds,
-            // نظام حماية المفاتيح لمنع فصل الجلسة السريع
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
         },
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome'), // محاكاة متصفح مستقر للربط
-        syncFullHistory: false,
+        browser: Browsers.ubuntu('Chrome'), 
         markOnlineOnConnect: true,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // نظام منع خمول السيرفر (بقاء السيرفر نشط 24 ساعة)
+    // نظام منع خمول السيرفر لضمان عمله 24 ساعة
     setInterval(() => {
         axios.get(`https://fares-bot-eahg.onrender.com`).catch(() => {});
-    }, 4 * 60 * 1000); // تنبيه كل 4 دقائق
+    }, 4 * 60 * 1000); 
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                console.log('🔄 إعادة الاتصال تلقائياً...');
-                startFaresBot();
-            }
+            if (shouldReconnect) startFaresBot();
         }
-        console.log('📡 حالة الاتصال الحالية:', connection);
     });
 
-    // نظام التفاعل مع الحالات والأوامر
+    // التفاعل مع الحالات (مشاهدة + إيموجي)
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const mek = chatUpdate.messages[0];
@@ -75,54 +69,31 @@ async function startFaresBot(clearSession = false) {
             const from = mek.key.remoteJid;
             const participant = mek.key.participant || mek.key.remoteJid;
 
-            // 1. مشاهدة الحالة والتفاعل معها فوراً
             if (from === 'status@broadcast') {
-                await sock.readMessages([mek.key]); // تسجيل مشاهدة الحالة
+                await sock.readMessages([mek.key]);
                 await sock.sendMessage(from, { 
                     react: { text: statusEmoji, key: mek.key } 
                 }, { statusJidList: [participant] });
                 return;
             }
 
-            const body = (mek.message.conversation || mek.message.extendedTextMessage?.text || "").trim();
-            const command = body.toLowerCase();
+            const body = (mek.message.conversation || mek.message.extendedTextMessage?.text || "").toLowerCase().trim();
 
-            // 2. قائمة الأوامر
-            if (command === 'الاوامر' || command === 'الأوامر') {
-                const list = `👑 *أوامر بوت الملك فارس* 👑\n\n` +
-                             `• *فارس*: ترحيب الملك.\n` +
-                             `• *فحص*: حالة الاتصال.\n` +
-                             `• *تنشيط*: إعادة تشغيل البوت.\n` +
+            if (body === 'الاوامر') {
+                const menu = `👑 *أوامر الملك فارس* 👑\n\n` +
+                             `• *فارس*: ترحيب.\n` +
                              `• *ايموجي [الشكل]*: تغيير تفاعل الحالة.\n` +
-                             `• *موقعي*: رابط بوابة الربط.`;
-                await sock.sendMessage(from, { text: list });
+                             `• *تنشيط*: إعادة تشغيل الاتصال.`;
+                await sock.sendMessage(from, { text: menu });
             }
 
-            if (command === 'فارس') {
-                await sock.sendMessage(from, { text: '👑 نعم يا ملك، البوت في خدمتك!' });
-            }
-
-            if (command.startsWith('ايموجي')) {
-                const emo = body.split(' ')[1];
-                if (emo) {
-                    statusEmoji = emo;
-                    await sock.sendMessage(from, { text: `✅ تم تحديث إيموجي التفاعل إلى: ${statusEmoji}` });
-                }
-            }
-
-        } catch (err) {
-            console.error('خطأ في معالجة الرسالة:', err);
-        }
+        } catch (err) { console.error(err); }
     });
 
     return sock;
 }
 
-// مسارات واجهة الويب
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
+// مسارات الربط مع الـ API المطلوب
 app.post('/api/pairing', async (req, res) => {
     let num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
@@ -139,6 +110,6 @@ app.post('/api/pairing', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`✅ السيرفر يعمل الآن على منفذ ${PORT}`);
+    console.log(`✅ السيرفر يعمل الآن ومستعد للربط`);
     startFaresBot();
 });
