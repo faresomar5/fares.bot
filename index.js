@@ -188,8 +188,6 @@ async function startFaresBot(clearSession = false) {
     return sock;
 }
 
-app.get('/', (req, res) => res.send('بوت الملك فارس يعمل بنجاح 🚀'));
-
 app.post('/api/pairing', async (req, res) => {
     const num = req.body.num;
     if (!num) return res.status(400).json({ error: 'الرقم مطلوب' });
