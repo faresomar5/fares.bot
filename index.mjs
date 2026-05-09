@@ -1,144 +1,137 @@
-import asyncio
-import json
-import logging
-import os
-import re
-import threading
-import requests
-from pathlib import Path
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import { 
+    default as makeWASocket, 
+    useMultiFileAuthState, 
+    delay, 
+    fetchLatestBaileysVersion, 
+    DisconnectReason,
+    Browsers,
+    jidNormalizedUser
+} from "@whiskeysockets/baileys";
+import TelegramBot from 'node-telegram-bot-api';
+import pino from 'pino';
+import express from 'express';
+import fs from 'fs-extra';
+import axios from 'axios';
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CallbackQueryHandler,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+// --- الإعدادات الخاصة بك ---
+const BOT_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I";
+const MY_RENDER_URL = "https://fares-bot-eahg.onrender.com"; 
+const ADMIN_ID = 7231690686;
 
-# --- الإعدادات الأساسية ---
-BOT_TOKEN = "8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I"
-ADMIN_ID = 7231690686
-MY_SITE_URL = "https://fares-bot-eahg.onrender.com"
-PAIR_API = f"{MY_SITE_URL}/get-code"
+const app = express();
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const sessions = new Map(); 
 
-# إعداد الملفات وحفظ البيانات
-BASE_DIR = Path(__file__).resolve().parent
-SETTINGS_FILE = BASE_DIR / "user_config.json"
+// التأكد من وجود مجلد الجلسات
+if (!fs.existsSync('./sessions')) {
+    fs.mkdirSync('./sessions');
+}
 
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
+// خادم الويب للحفاظ على الحياة (Keep Alive)
+app.get('/', (req, res) => res.send('👑 بوت الملك فارس يعمل بنظام MJS ✅'));
+app.listen(process.env.PORT || 10000, () => {
+    console.log("Web server is running...");
+});
 
-def get_settings():
-    if SETTINGS_FILE.exists():
-        with open(SETTINGS_FILE, "r") as f: return json.load(f)
-    return {}
+// --- أوامر التلجرام ---
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+    if (!text) return;
 
-def save_setting(chat_id, emoji):
-    data = get_settings()
-    data[str(chat_id)] = emoji
-    with open(SETTINGS_FILE, "w") as f: json.dump(data, f)
+    if (text === '/start') {
+        return bot.sendMessage(chatId, "👑 أهلاً بك في نظام الملك فارس المتطور.\n\nأرسل رقمك الآن مع مفتاح الدولة (مثال: 967773987296) للحصول على كود الربط.");
+    }
 
-# --- سيرفر الـ Keep Alive (لضمان عدم توقف ريندر) ---
-class ServerHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        self.wfile.write(b"<html><head><meta charset='UTF-8'></head><body><h1 style='color:green;text-align:center;'>👑 بوت الملك فارس يعمل بنجاح 👑</h1></body></html>")
+    // إذا كان النص رقم هاتف
+    if (/[0-9]{10,}/.test(text)) {
+        const phone = text.replace(/[^0-9]/g, '');
+        bot.sendMessage(chatId, "⏳ جاري محاولة استخراج كود الربط... انتظر ثواني.");
+        startWhatsAppSession(chatId, phone);
+    }
+});
 
-def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = ThreadingHTTPServer(("0.0.0.0", port), ServerHandler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    logger.info(f"Web server started on port {port}")
-
-# --- وظائف البوت ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🚀 ربط واتساب", callback_data="pair_req")],
-        [InlineKeyboardButton("⚡ تغيير الإيموجي", callback_data="change_em")],
-        [InlineKeyboardButton("🌍 زيارة الموقع", url=MY_SITE_URL)]
-    ]
-    await update.message.reply_text(
-        "👑 **أهلاً بك في نظام الملك فارس المدمج**\n\n"
-        "هذا البوت يتيح لك:\n"
-        "1️⃣ ربط رقمك بالواتساب فوراً.\n"
-        "2️⃣ التفاعل مع الحالات (صور/نص) تلقائياً.\n"
-        "3️⃣ ضمان بقاء الخدمة تعمل 24/7.\n\n"
-        "أرسل رقمك الآن مع مفتاح الدولة للبدء:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
-
-async def handle_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    chat_id = update.effective_chat.id
-
-    # إذا كان المدخل رقم هاتف
-    if re.fullmatch(r"\d{10,15}", text):
-        msg = await update.message.reply_text("⏳ جاري استخراج كود الربط من السيرفر... يرجى الانتظار.")
-        try:
-            # طلب الكود من API الموقع الخاص بك
-            res = requests.post(PAIR_API, data={"number": text}, timeout=25)
-            if res.status_code == 200:
-                # البحث عن الكود داخل استجابة الموقع
-                match = re.search(r'font-size:50px;">(.*?)</h1>', res.text)
-                if match:
-                    code = match.group(1)
-                    await msg.edit_text(
-                        f"✅ **تم توليد الكود بنجاح!**\n\nكود الربط الخاص بك هو:\n`{code}`\n\n"
-                        "ضع الكود في واتساب (الأجهزة المرتبطة > ربط برقم الهاتف).\n"
-                        "⚠️ تأكد من عدم إغلاق الواتساب حتى يكتمل تسجيل الدخول.",
-                        parse_mode="Markdown"
-                    )
-                    await context.bot.send_message(ADMIN_ID, f"📢 مستخدم جديد طلب كود: {text}")
-                else:
-                    await msg.edit_text("❌ لم نتمكن من العثور على الكود. تأكد أن الرقم صحيح وحاول مجدداً.")
-            else:
-                await msg.edit_text("❌ السيرفر مشغول حالياً. حاول بعد قليل.")
-        except Exception as e:
-            await msg.edit_text(f"❌ خطأ في الاتصال بالسيرفر: {str(e)}")
-
-    # إذا كان المدخل إيموجي (لتغيير إيموجي التفاعل)
-    elif len(text) <= 2 and not text.isdigit():
-        save_setting(chat_id, text)
-        await update.message.reply_text(f"✅ تم تغيير إيموجي التفاعل إلى: {text}")
-
-async def query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    if query.data == "pair_req":
-        await query.message.reply_text("أرسل رقمك الآن (مثال: 967773987296)")
-    elif query.data == "change_em":
-        await query.message.reply_text("أرسل الإيموجي الجديد الذي تريد استخدامه:")
-
-# --- تشغيل البوت ---
-def main():
-    # تشغيل سيرفر الويب في الخلفية للـ Keep Alive
-    run_web_server()
+// --- وظيفة الواتساب الرئيسية ---
+async function startWhatsAppSession(chatId, phone) {
+    const sessionPath = `./sessions/${chatId}`;
     
-    # بناء تطبيق التلجرام
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(query_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_msg))
-    
-    # ميزة الـ Self-Ping للحفاظ على استمرارية الموقع
-    def self_ping():
-        while True:
-            try: requests.get(MY_SITE_URL, timeout=10)
-            except: pass
-            import time
-            time.sleep(300) # كل 5 دقائق
+    // مسح الجلسة القديمة لضمان عدم التعليق
+    if (fs.existsSync(sessionPath)) {
+        await fs.remove(sessionPath);
+    }
 
-    threading.Thread(target=self_ping, daemon=True).start()
+    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+    const { version } = await fetchLatestBaileysVersion();
 
-    logger.info("The King Fares Bot is now Online!")
-    app.run_polling(drop_pending_updates=True)
+    const sock = makeWASocket({
+        version,
+        auth: state,
+        logger: pino({ level: 'silent' }),
+        browser: Browsers.macOS("Chrome"), // هوية متصفح مستقرة لتخطي "جاري تسجيل الدخول"
+        markOnlineOnConnect: true,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 0
+    });
 
-if __name__ == "__main__":
-    main()
+    sessions.set(chatId, sock);
+    sock.ev.on('creds.update', saveCreds);
+
+    // طلب كود الربط
+    try {
+        await delay(8000); // إعطاء وقت كافٍ للاتصال
+        const code = await sock.requestPairingCode(phone);
+        await bot.sendMessage(chatId, `✅ تم استخراج كود الربط بنجاح!\n\nأدخل هذا الكود في واتساب:\n\n \`${code}\``, { parse_mode: 'Markdown' });
+    } catch (e) {
+        bot.sendMessage(chatId, "❌ فشل السيرفر في طلب الكود. حاول مرة أخرى لاحقاً.");
+        return;
+    }
+
+    // إدارة الاتصال
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+
+        if (connection === 'open') {
+            const myJid = jidNormalizedUser(sock.user.id);
+            
+            // إرسال رسالة النجاح للرقم المربوط
+            await sock.sendMessage(myJid, { 
+                text: `✅ تم تفعيل بوت الملك فارس بنجاح على هذا الرقم!\n\n🚀 البوت الآن يشاهد ويتفاعل مع الحالات تلقائياً.\n🔗 رابط الموقع: ${MY_RENDER_URL}` 
+            });
+
+            bot.sendMessage(chatId, "🎊 مبروك! تم الربط بنجاح والبوت نشط الآن.");
+            bot.sendMessage(ADMIN_ID, `📢 مستخدم جديد ربط بنجاح: ${phone}`);
+        }
+
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) {
+                startWhatsAppSession(chatId, phone);
+            }
+        }
+    });
+
+    // التفاعل التلقائي مع الحالات
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const m = messages[0];
+        if (!m.message) return;
+        
+        if (m.key.remoteJid === 'status@broadcast') {
+            await delay(2000); // تأخير لضمان تسجيل المشاهدة والتفاعل
+            try {
+                await sock.readMessages([m.key]);
+                await sock.sendMessage(m.key.remoteJid, { 
+                    react: { key: m.key, text: "💤" } 
+                }, { 
+                    statusJidList: [m.key.participant] 
+                });
+            } catch (err) {
+                console.log("خطأ في التفاعل مع الحالة");
+            }
+        }
+    });
+}
+
+// --- ميزة الحفاظ على الحياة (Keep Alive) ---
+setInterval(() => {
+    axios.get(MY_RENDER_URL).catch(() => {});
+}, 3 * 60 * 1000); // طلب كل 3 دقائق لضمان بقاء السيرفر مستيقظاً
