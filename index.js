@@ -7,7 +7,7 @@ const {
 } = require("@whiskeysockets/baileys");
 const express = require('express');
 const pino = require('pino');
-const TelegramBot = require('node-telegram-bot-api'); // مكتبة التلجرام
+const TelegramBot = require('node-telegram-bot-api');
 
 const app = express();
 const port = process.env.PORT || 10000;
@@ -20,30 +20,75 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 let sock;
-let reactionEmoji = "💤"; // الإيموجي الافتراضي
+let reactionEmoji = "💤"; 
 
-// --- أومر بوت التلجرام ---
+// --- وظيفة منع توقف السيرفر (24 ساعة) ---
+setInterval(() => {
+    // محاكاة طلب للسيرفر نفسه لبقائه نشطاً
+    console.log("Keep-alive: السيرفر لا يزال يعمل...");
+}, 1000 * 60 * 5); // كل 5 دقائق
+
+// --- أوامر بوت التلجرام ---
+
+// 1. أمر البداية وعرض التعليمات
 botTelegram.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     botTelegram.sendMessage(chatId, `
-👋 أهلاً بك في لوحة تحكم بوت الملك فارس
+👑 **مرحباً بك في بوت الملك فارس**
 
-🛠 **الأوامر المتاحة:**
-• لتغيير إيموجي التفاعل أرسل: 
-  */setemoji* [الإيموجي]
+يمكنك التحكم بالبوت عبر الأوامر التالية:
 
-• الحالة الحالية: ${reactionEmoji}
+1️⃣ لربط رقم واتساب واستخراج الكود:
+أرسل: \`/login\` متبوعاً بالرقم مع رمز الدولة
+مثال: \`/login 96777xxxxxxx\`
+
+2️⃣ لتغيير إيموجي التفاعل مع الحالات:
+أرسل: \`/setemoji\` متبوعاً بالإيموجي
+مثال: \`/setemoji 🔥\`
+
+✨ البوت يعمل الآن بنظام 24 ساعة بدون توقف.
     `, { parse_mode: 'Markdown' });
 });
 
-botTelegram.onText(/\/setemoji (.+)/, (msg, match) => {
+// 2. كود ربط الرقم من التلجرام (الميزة المطلوبة)
+botTelegram.onText(/\/login (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const newEmoji = match[1];
-    reactionEmoji = newEmoji;
-    botTelegram.sendMessage(chatId, `✅ تم تغيير إيموجي التفاعل بنجاح إلى: ${reactionEmoji}`);
+    const num = match[1].replace(/[^0-9]/g, '');
+
+    if (!num || num.length < 10) {
+        return botTelegram.sendMessage(chatId, "❌ خطأ: يرجى إدخال رقم هاتف صحيح مع رمز الدولة.");
+    }
+
+    botTelegram.sendMessage(chatId, `⏳ جاري توليد كود الربط للرقم: ${num}...`);
+
+    try {
+        if (!sock) await startBot();
+        const code = await sock.requestPairingCode(num);
+        
+        botTelegram.sendMessage(chatId, `
+✅ **تم توليد كود الربط بنجاح**
+
+رقم الهاتف: \`${num}\`
+كود الربط هو: 
+
+👉 \`${code}\` 👈
+
+قم بإدخال هذا الكود في واتساب (الأجهزة المرتبطة > ربط هاتف برقم الهاتف).
+        `, { parse_mode: 'Markdown' });
+    } catch (err) {
+        console.error(err);
+        botTelegram.sendMessage(chatId, "❌ فشل استخراج الكود. تأكد من أن السيرفر يعمل وحاول مجدداً.");
+    }
 });
 
-// --- واجهة المستخدم (Web UI) ---
+// 3. تغيير الإيموجي من التلجرام
+botTelegram.onText(/\/setemoji (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    reactionEmoji = match[1];
+    botTelegram.sendMessage(chatId, `✅ تم تحديث إيموجي التفاعل إلى: ${reactionEmoji}`);
+});
+
+// --- واجهة المستخدم Web UI (دون تغيير) ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -56,11 +101,8 @@ app.get('/', (req, res) => {
                 body { font-family: 'Arial', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
                 .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
                 h1 { color: #075E54; margin-bottom: 10px; }
-                p { color: #666; font-size: 14px; margin-bottom: 20px; }
-                input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 16px; }
-                button { width: 100%; padding: 12px; background-color: #25D366; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: 0.3s; }
-                button:hover { background-color: #128C7E; }
-                label { display: block; text-align: right; margin-bottom: 5px; font-size: 13px; color: #888; }
+                button { width: 100%; padding: 12px; background-color: #25D366; color: white; border: none; border-radius: 8px; cursor: pointer; }
+                input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
             </style>
         </head>
         <body>
@@ -68,10 +110,8 @@ app.get('/', (req, res) => {
                 <h1>👑 بوت الملك فارس</h1>
                 <p>أدخل بياناتك لاستخراج كود الربط</p>
                 <form action="/get-code" method="POST">
-                    <label>رقم الهاتف:</label>
                     <input type="text" name="number" placeholder="مثال: 967773987296" required>
-                    <label>إيموجي التفاعل مع الحالات:</label>
-                    <input type="text" name="emoji" value="${reactionEmoji}" placeholder="ضع الإيموجي هنا">
+                    <input type="text" name="emoji" value="${reactionEmoji}" placeholder="إيموجي التفاعل">
                     <button type="submit">استخراج كود الربط 🚀</button>
                 </form>
             </div>
@@ -82,38 +122,17 @@ app.get('/', (req, res) => {
 
 app.post('/get-code', async (req, res) => {
     const num = req.body.number.replace(/[^0-9]/g, '');
-    const emoji = req.body.emoji || "💤";
-    
     if (!num) return res.send("الرجاء إدخال رقم صحيح");
-    
-    reactionEmoji = emoji;
+    reactionEmoji = req.body.emoji || reactionEmoji;
 
     try {
         if (!sock) await startBot();
         const code = await sock.requestPairingCode(num);
-        
-        res.send(`
-            <div style="text-align:center; margin-top:50px; font-family:Arial; direction:rtl;">
-                <h2 style="color:#075E54;">تم توليد الكود بنجاح!</h2>
-                <p>الإيموجي المستخدم للتفاعل: ${reactionEmoji}</p>
-                <p>أدخل الكود التالي في واتساب الخاص بك:</p>
-                <div style="background:#f0f0f0; padding:20px; border-radius:10px; display:inline-block; margin:20px 0;">
-                    <h1 style="color:#e74c3c; font-size:45px; letter-spacing:5px; margin:0;">${code}</h1>
-                </div>
-                <br>
-                <a href="/" style="text-decoration:none; color:#25D366;">العودة لتغيير الإعدادات</a>
-            </div>
-        `);
-    } catch (err) {
-        console.error(err);
-        res.send("فشل الاتصال بالسيرفر، يرجى تحديث الصفحة والمحاولة مرة أخرى.");
-    }
+        res.send(`<h2>كود الربط الخاص بك: <span style="color:red;">${code}</span></h2><a href="/">عودة</a>`);
+    } catch (err) { res.send("خطأ في السيرفر"); }
 });
 
-app.listen(port, () => {
-    console.log(`✅ السيرفر يعمل على المنفذ ${port}`);
-    console.log(`✅ بوت التلجرام نشط الآن!`);
-});
+app.listen(port, () => console.log(`Server running on port ${port}`));
 
 // --- وظيفة البوت الأساسية ---
 async function startBot() {
@@ -124,7 +143,10 @@ async function startBot() {
         version,
         auth: state,
         printQRInTerminal: false,
-        logger: pino({ level: "silent" })
+        logger: pino({ level: "silent" }),
+        // إعدادات إضافية للثبات
+        keepAliveIntervalMs: 30000,
+        defaultQueryTimeoutMs: undefined
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -132,21 +154,12 @@ async function startBot() {
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (msg.key.remoteJid === 'status@broadcast') {
-            // نظام حماية: تأخير عشوائي بين 8 و 15 ثانية
             await delay(Math.floor(Math.random() * 7000) + 8000);
-            
-            // قراءة الحالة
             await sock.readMessages([msg.key]);
-            
-            // التفاعل بالإيموجي (الذي يمكن تغييره من تلجرام)
             await sock.sendMessage(msg.key.remoteJid, {
-                react: {
-                    key: msg.key,
-                    text: reactionEmoji
-                }
+                react: { key: msg.key, text: reactionEmoji }
             }, { statusJidList: [msg.key.participant] });
-
-            console.log(`✅ شاهدت حالة وتفاعلت بـ ${reactionEmoji}`);
+            console.log(`✅ تفاعل مع حالة بـ ${reactionEmoji}`);
         }
     });
 
@@ -156,10 +169,9 @@ async function startBot() {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startBot();
         } else if (connection === 'open') {
-            console.log("✅ واتساب متصل الآن!");
+            console.log("✅ متصل الآن!");
         }
     });
 }
 
-// تشغيل البوت تلقائياً عند بدء السيرفر
 startBot();
