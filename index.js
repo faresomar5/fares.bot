@@ -42,15 +42,15 @@ bot.onText(/\/start/, (msg) => {
             ]
         }
     };
-    bot.sendMessage(chatId, `👑 بوت الملك فارس (النسخة السريعة)\n\nالبوت مصمم ليبقى متصلاً 24/7 والتفاعل مع الحالات فورياً.`, opts);
+    bot.sendMessage(chatId, `👑 بوت الملك فارس (النسخة المطورة)\n\nالبوت مصمم للتفاعل مع الحالات (إعجاب تلقائي) فور نزولها 24/7.`, opts);
 });
 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
 
-    if (data === 'pair') bot.sendMessage(chatId, "أرسل رقمك الآن مع مفتاح الدولة (بدون +)");
-    else if (data === 'set_emoji') bot.sendMessage(chatId, "أرسل الإيموجي الجديد:");
+    if (data === 'pair') bot.sendMessage(chatId, "أرسل رقمك الآن مع مفتاح الدولة (مثال: 9665xxxxxxxx)");
+    else if (data === 'set_emoji') bot.sendMessage(chatId, "أرسل الإيموجي الجديد الذي تريد استخدامه للتفاعل:");
     else if (data === 'list') {
         const sessionDir = `./sessions/${chatId}`;
         if (fs.existsSync(sessionDir)) bot.sendMessage(chatId, "✅ جلستك نشطة وشغالة بدون توقف.");
@@ -64,18 +64,20 @@ bot.on('message', async (msg) => {
     const text = msg.text;
     if (!text || text.startsWith('/')) return;
 
+    // تغيير الإيموجي إذا أرسل المستخدم إيموجي فقط
     if (text.length <= 4 && !/[0-9]/.test(text)) {
         userSettings.set(chatId, text);
-        return bot.sendMessage(chatId, `✅ تم تحديث الإيموجي إلى: ${text}`);
+        return bot.sendMessage(chatId, `✅ تم تحديث إيموجي التفاعل إلى: ${text}`);
     }
 
+    // بدء عملية الربط إذا أرسل رقم هاتف
     if (/[0-9]{10,}/.test(text)) {
         const phone = text.replace(/[^0-9]/g, '');
         startWhatsAppPairing(chatId, phone);
     }
 });
 
-// --- وظيفة الواتساب المطورة للثبات والسرعة ---
+// --- وظيفة الواتساب المطورة للتفاعل التلقائي ---
 
 async function startWhatsAppPairing(chatId, phone) {
     const sessionPath = `./sessions/${chatId}`;
@@ -87,8 +89,8 @@ async function startWhatsAppPairing(chatId, phone) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu("Chrome"), // لزيادة الثبات
-        keepAliveIntervalMs: 30000, // نبضات قلب للحفاظ على الجلسة
+        browser: Browsers.ubuntu("Chrome"), 
+        keepAliveIntervalMs: 30000, 
         syncFullHistory: false,
         markOnlineOnConnect: true
     });
@@ -103,7 +105,7 @@ async function startWhatsAppPairing(chatId, phone) {
             bot.sendMessage(chatId, `تم استخراج الكود بنجاح!\n\nالكود: \`${code}\``, { parse_mode: 'Markdown' });
         }
     } catch (err) {
-        bot.sendMessage(chatId, "❌ خطأ في طلب الكود. تأكد من الرقم.");
+        bot.sendMessage(chatId, "❌ خطأ في طلب الكود. تأكد من الرقم أو حاول لاحقاً.");
     }
 
     sock.ev.on('creds.update', saveCreds);
@@ -112,15 +114,14 @@ async function startWhatsAppPairing(chatId, phone) {
         const { connection, lastDisconnect } = update;
 
         if (connection === 'open') {
-            bot.sendMessage(chatId, "✅ تم الاتصال! الرقم سيبقى شغالاً 24 ساعة بدون فصل.");
-            bot.sendMessage(devId, `📢 مستخدم ربط بنجاح: ${phone}`);
+            bot.sendMessage(chatId, "✅ تم الاتصال بنجاح! سيبدأ البوت بالتفاعل مع الحالات الآن.");
+            bot.sendMessage(devId, `📢 مستخدم جديد ارتبط: ${phone}`);
             try { await sock.newsletterFollow(channelInviteCode); } catch (e) {}
         }
 
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) {
-                console.log("إعادة الاتصال التلقائي...");
                 startWhatsAppPairing(chatId, phone);
             } else {
                 removeSession(chatId);
@@ -128,27 +129,30 @@ async function startWhatsAppPairing(chatId, phone) {
         }
     });
 
-    // التفاعل الفوري مع الحالات (كل ثانية)
+    // --- محرك التفاعل مع الحالات (تعديل فارس) ---
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
-        if (m.key.remoteJid === 'status@broadcast') {
-            const emoji = userSettings.get(chatId) || "💤";
-            
-            // تأخير ثانية واحدة فقط (أسرع شيء ممكن)
-            await delay(1000); 
+        if (!m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
+            const emoji = userSettings.get(chatId) || "❤️";
+            const participant = m.key.participant || m.participant;
             
             try {
-                // قراءة الحالة
+                // 1. قراءة الحالة (مشاهدة)
                 await sock.readMessages([m.key]);
                 
-                // التفاعل بالإيموجي
+                // 2. إرسال الإعجاب (Reaction)
                 await sock.sendMessage(m.key.remoteJid, { 
-                    react: { key: m.key, text: emoji } 
-                }, { statusJidList: [m.key.participant] });
+                    react: { 
+                        key: m.key, 
+                        text: emoji 
+                    } 
+                }, { 
+                    statusJidList: [participant] 
+                });
                 
-                console.log(`✅ تفاعل فوري مع حالة ${m.key.participant}`);
+                console.log(`✅ تم التفاعل مع حالة ${participant}`);
             } catch (err) {
-                console.log("خطأ بسيط في التفاعل السريع، سيتم التخطي.");
+                console.log("خطأ في التفاعل التلقائي، تم التخطي.");
             }
         }
     });
@@ -162,8 +166,8 @@ function removeSession(chatId) {
     const sessionDir = `./sessions/${chatId}`;
     if (fs.existsSync(sessionDir)) {
         fs.removeSync(sessionDir);
-        bot.sendMessage(chatId, "🗑️ تم حذف الجلسة وتسجيل الخروج.");
+        bot.sendMessage(chatId, "🗑️ تم حذف الجلسة بنجاح.");
     } else {
-        bot.sendMessage(chatId, "ℹ️ لا توجد جلسة لحذفها.");
+        bot.sendMessage(chatId, "ℹ️ لا توجد جلسة نشطة.");
     }
 }
