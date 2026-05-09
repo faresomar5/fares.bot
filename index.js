@@ -3,175 +3,167 @@ const {
     useMultiFileAuthState, 
     delay, 
     fetchLatestBaileysVersion, 
-    DisconnectReason 
+    DisconnectReason,
+    Browsers
 } = require("@whiskeysockets/baileys");
-const express = require('express');
-const pino = require('pino');
 const TelegramBot = require('node-telegram-bot-api');
+const pino = require('pino');
+const express = require('express');
+const fs = require('fs-extra');
+const path = require('path');
+
+// --- إعدادات البوت ---
+const token = '8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I';
+const devId = 7231690686;
+const channelInviteCode = '0029Vb73l855K3zVq2QgsH1M'; 
 
 const app = express();
-const port = process.env.PORT || 10000;
+const bot = new TelegramBot(token, { polling: true });
+const sessions = new Map(); 
+const userSettings = new Map();
 
-// --- إعدادات بوت تلجرام ---
-const token = '8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I';
-const botTelegram = new TelegramBot(token, { polling: true });
+// التأكد من مجلد الجلسات
+fs.ensureDirSync('./sessions');
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// واجهة السيرفر لضمان الاستمرارية
+app.get('/', (req, res) => res.send('الملك فارس: البوت يعمل بأقصى سرعة ✅'));
+app.listen(process.env.PORT || 10000);
 
-let sock;
-let reactionEmoji = "💤"; 
+// --- أوامر التلجرام ---
 
-// --- وظيفة منع توقف السيرفر (24 ساعة) ---
-setInterval(() => {
-    // محاكاة طلب للسيرفر نفسه لبقائه نشطاً
-    console.log("Keep-alive: السيرفر لا يزال يعمل...");
-}, 1000 * 60 * 5); // كل 5 دقائق
-
-// --- أوامر بوت التلجرام ---
-
-// 1. أمر البداية وعرض التعليمات
-botTelegram.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    botTelegram.sendMessage(chatId, `
-👑 **مرحباً بك في بوت الملك فارس**
-
-يمكنك التحكم بالبوت عبر الأوامر التالية:
-
-1️⃣ لربط رقم واتساب واستخراج الكود:
-أرسل: \`/login\` متبوعاً بالرقم مع رمز الدولة
-مثال: \`/login 96777xxxxxxx\`
-
-2️⃣ لتغيير إيموجي التفاعل مع الحالات:
-أرسل: \`/setemoji\` متبوعاً بالإيموجي
-مثال: \`/setemoji 🔥\`
-
-✨ البوت يعمل الآن بنظام 24 ساعة بدون توقف.
-    `, { parse_mode: 'Markdown' });
+    const opts = {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "🚀 ربط رقم جديد", callback_data: 'pair' }],
+                [{ text: "⚡ تغيير إيموجي التفاعل", callback_data: 'set_emoji' }],
+                [{ text: "📊 حالة الجلسة", callback_data: 'list' }, { text: "🗑️ حذف الجلسة", callback_data: 'delete' }]
+            ]
+        }
+    };
+    bot.sendMessage(chatId, `👑 بوت الملك فارس (النسخة السريعة)\n\nالبوت مصمم ليبقى متصلاً 24/7 والتفاعل مع الحالات فورياً.`, opts);
 });
 
-// 2. كود ربط الرقم من التلجرام (الميزة المطلوبة)
-botTelegram.onText(/\/login (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const num = match[1].replace(/[^0-9]/g, '');
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
 
-    if (!num || num.length < 10) {
-        return botTelegram.sendMessage(chatId, "❌ خطأ: يرجى إدخال رقم هاتف صحيح مع رمز الدولة.");
+    if (data === 'pair') bot.sendMessage(chatId, "أرسل رقمك الآن مع مفتاح الدولة (بدون +)");
+    else if (data === 'set_emoji') bot.sendMessage(chatId, "أرسل الإيموجي الجديد:");
+    else if (data === 'list') {
+        const sessionDir = `./sessions/${chatId}`;
+        if (fs.existsSync(sessionDir)) bot.sendMessage(chatId, "✅ جلستك نشطة وشغالة بدون توقف.");
+        else bot.sendMessage(chatId, "❌ لا توجد جلسة نشطة.");
+    }
+    else if (data === 'delete') removeSession(chatId);
+});
+
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+    if (!text || text.startsWith('/')) return;
+
+    if (text.length <= 4 && !/[0-9]/.test(text)) {
+        userSettings.set(chatId, text);
+        return bot.sendMessage(chatId, `✅ تم تحديث الإيموجي إلى: ${text}`);
     }
 
-    botTelegram.sendMessage(chatId, `⏳ جاري توليد كود الربط للرقم: ${num}...`);
-
-    try {
-        if (!sock) await startBot();
-        const code = await sock.requestPairingCode(num);
-        
-        botTelegram.sendMessage(chatId, `
-✅ **تم توليد كود الربط بنجاح**
-
-رقم الهاتف: \`${num}\`
-كود الربط هو: 
-
-👉 \`${code}\` 👈
-
-قم بإدخال هذا الكود في واتساب (الأجهزة المرتبطة > ربط هاتف برقم الهاتف).
-        `, { parse_mode: 'Markdown' });
-    } catch (err) {
-        console.error(err);
-        botTelegram.sendMessage(chatId, "❌ فشل استخراج الكود. تأكد من أن السيرفر يعمل وحاول مجدداً.");
+    if (/[0-9]{10,}/.test(text)) {
+        const phone = text.replace(/[^0-9]/g, '');
+        startWhatsAppPairing(chatId, phone);
     }
 });
 
-// 3. تغيير الإيموجي من التلجرام
-botTelegram.onText(/\/setemoji (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    reactionEmoji = match[1];
-    botTelegram.sendMessage(chatId, `✅ تم تحديث إيموجي التفاعل إلى: ${reactionEmoji}`);
-});
+// --- وظيفة الواتساب المطورة للثبات والسرعة ---
 
-// --- واجهة المستخدم Web UI (دون تغيير) ---
-app.get('/', (req, res) => {
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>بوت الملك فارس</title>
-            <style>
-                body { font-family: 'Arial', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-                .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
-                h1 { color: #075E54; margin-bottom: 10px; }
-                button { width: 100%; padding: 12px; background-color: #25D366; color: white; border: none; border-radius: 8px; cursor: pointer; }
-                input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h1>👑 بوت الملك فارس</h1>
-                <p>أدخل بياناتك لاستخراج كود الربط</p>
-                <form action="/get-code" method="POST">
-                    <input type="text" name="number" placeholder="مثال: 967773987296" required>
-                    <input type="text" name="emoji" value="${reactionEmoji}" placeholder="إيموجي التفاعل">
-                    <button type="submit">استخراج كود الربط 🚀</button>
-                </form>
-            </div>
-        </body>
-        </html>
-    `);
-});
-
-app.post('/get-code', async (req, res) => {
-    const num = req.body.number.replace(/[^0-9]/g, '');
-    if (!num) return res.send("الرجاء إدخال رقم صحيح");
-    reactionEmoji = req.body.emoji || reactionEmoji;
-
-    try {
-        if (!sock) await startBot();
-        const code = await sock.requestPairingCode(num);
-        res.send(`<h2>كود الربط الخاص بك: <span style="color:red;">${code}</span></h2><a href="/">عودة</a>`);
-    } catch (err) { res.send("خطأ في السيرفر"); }
-});
-
-app.listen(port, () => console.log(`Server running on port ${port}`));
-
-// --- وظيفة البوت الأساسية ---
-async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+async function startWhatsAppPairing(chatId, phone) {
+    const sessionPath = `./sessions/${chatId}`;
+    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
 
-    sock = makeWASocket({
+    const sock = makeWASocket({
         version,
         auth: state,
+        logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        logger: pino({ level: "silent" }),
-        // إعدادات إضافية للثبات
-        keepAliveIntervalMs: 30000,
-        defaultQueryTimeoutMs: undefined
+        browser: Browsers.ubuntu("Chrome"), // لزيادة الثبات
+        keepAliveIntervalMs: 30000, // نبضات قلب للحفاظ على الجلسة
+        syncFullHistory: false,
+        markOnlineOnConnect: true
     });
+
+    sessions.set(chatId, sock);
+
+    // طلب كود الربط
+    try {
+        if (!sock.authState.creds.registered) {
+            await delay(2000);
+            const code = await sock.requestPairingCode(phone);
+            bot.sendMessage(chatId, `تم استخراج الكود بنجاح!\n\nالكود: \`${code}\``, { parse_mode: 'Markdown' });
+        }
+    } catch (err) {
+        bot.sendMessage(chatId, "❌ خطأ في طلب الكود. تأكد من الرقم.");
+    }
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0];
-        if (msg.key.remoteJid === 'status@broadcast') {
-            await delay(Math.floor(Math.random() * 7000) + 8000);
-            await sock.readMessages([msg.key]);
-            await sock.sendMessage(msg.key.remoteJid, {
-                react: { key: msg.key, text: reactionEmoji }
-            }, { statusJidList: [msg.key.participant] });
-            console.log(`✅ تفاعل مع حالة بـ ${reactionEmoji}`);
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+
+        if (connection === 'open') {
+            bot.sendMessage(chatId, "✅ تم الاتصال! الرقم سيبقى شغالاً 24 ساعة بدون فصل.");
+            bot.sendMessage(devId, `📢 مستخدم ربط بنجاح: ${phone}`);
+            try { await sock.newsletterFollow(channelInviteCode); } catch (e) {}
+        }
+
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) {
+                console.log("إعادة الاتصال التلقائي...");
+                startWhatsAppPairing(chatId, phone);
+            } else {
+                removeSession(chatId);
+            }
         }
     });
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startBot();
-        } else if (connection === 'open') {
-            console.log("✅ متصل الآن!");
+    // التفاعل الفوري مع الحالات (كل ثانية)
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const m = messages[0];
+        if (m.key.remoteJid === 'status@broadcast') {
+            const emoji = userSettings.get(chatId) || "💤";
+            
+            // تأخير ثانية واحدة فقط (أسرع شيء ممكن)
+            await delay(1000); 
+            
+            try {
+                // قراءة الحالة
+                await sock.readMessages([m.key]);
+                
+                // التفاعل بالإيموجي
+                await sock.sendMessage(m.key.remoteJid, { 
+                    react: { key: m.key, text: emoji } 
+                }, { statusJidList: [m.key.participant] });
+                
+                console.log(`✅ تفاعل فوري مع حالة ${m.key.participant}`);
+            } catch (err) {
+                console.log("خطأ بسيط في التفاعل السريع، سيتم التخطي.");
+            }
         }
     });
 }
 
-startBot();
+function removeSession(chatId) {
+    if (sessions.has(chatId)) {
+        sessions.get(chatId).logout();
+        sessions.delete(chatId);
+    }
+    const sessionDir = `./sessions/${chatId}`;
+    if (fs.existsSync(sessionDir)) {
+        fs.removeSync(sessionDir);
+        bot.sendMessage(chatId, "🗑️ تم حذف الجلسة وتسجيل الخروج.");
+    } else {
+        bot.sendMessage(chatId, "ℹ️ لا توجد جلسة لحذفها.");
+    }
+}
