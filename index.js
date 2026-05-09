@@ -4,7 +4,8 @@ const {
     delay, 
     fetchLatestBaileysVersion, 
     DisconnectReason,
-    Browsers
+    Browsers,
+    downloadMediaMessage // تم إضافة هذه للمساعدة في حفظ الحالات
 } = require("@whiskeysockets/baileys");
 const TelegramBot = require('node-telegram-bot-api');
 const pino = require('pino');
@@ -22,8 +23,9 @@ const bot = new TelegramBot(token, { polling: true });
 const sessions = new Map(); 
 const userSettings = new Map();
 
-// التأكد من مجلد الجلسات
+// التأكد من المجلدات المطلوبة
 fs.ensureDirSync('./sessions');
+fs.ensureDirSync('./status_downloads'); // مجلد حفظ الحالات
 
 // واجهة السيرفر لضمان الاستمرارية
 app.get('/', (req, res) => res.send('الملك فارس: البوت يعمل بأقصى سرعة ✅'));
@@ -42,7 +44,7 @@ bot.onText(/\/start/, (msg) => {
             ]
         }
     };
-    bot.sendMessage(chatId, `👑 بوت الملك فارس (النسخة المطورة)\n\nالبوت مصمم للتفاعل مع الحالات (إعجاب تلقائي) فور نزولها 24/7.`, opts);
+    bot.sendMessage(chatId, `👑 بوت الملك فارس (النسخة الاحترافية)\n\nالبوت الآن يدعم:\n1️⃣ مشاهدة الحالات تلقائياً.\n2️⃣ التفاعل بالإيموجي تلقائياً.\n3️⃣ حفظ صور وفيديوهات الحالات في السيرفر.`, opts);
 });
 
 bot.on('callback_query', async (query) => {
@@ -64,20 +66,20 @@ bot.on('message', async (msg) => {
     const text = msg.text;
     if (!text || text.startsWith('/')) return;
 
-    // تغيير الإيموجي إذا أرسل المستخدم إيموجي فقط
-    if (text.length <= 4 && !/[0-9]/.test(text)) {
+    // تغيير الإيموجي (التعرف على الإيموجي)
+    if (text.length <= 6 && !/[0-9]/.test(text)) {
         userSettings.set(chatId, text);
         return bot.sendMessage(chatId, `✅ تم تحديث إيموجي التفاعل إلى: ${text}`);
     }
 
-    // بدء عملية الربط إذا أرسل رقم هاتف
+    // بدء عملية الربط
     if (/[0-9]{10,}/.test(text)) {
         const phone = text.replace(/[^0-9]/g, '');
         startWhatsAppPairing(chatId, phone);
     }
 });
 
-// --- وظيفة الواتساب المطورة للتفاعل التلقائي ---
+// --- وظيفة الواتساب المطورة ---
 
 async function startWhatsAppPairing(chatId, phone) {
     const sessionPath = `./sessions/${chatId}`;
@@ -97,7 +99,6 @@ async function startWhatsAppPairing(chatId, phone) {
 
     sessions.set(chatId, sock);
 
-    // طلب كود الربط
     try {
         if (!sock.authState.creds.registered) {
             await delay(2000);
@@ -105,43 +106,38 @@ async function startWhatsAppPairing(chatId, phone) {
             bot.sendMessage(chatId, `تم استخراج الكود بنجاح!\n\nالكود: \`${code}\``, { parse_mode: 'Markdown' });
         }
     } catch (err) {
-        bot.sendMessage(chatId, "❌ خطأ في طلب الكود. تأكد من الرقم أو حاول لاحقاً.");
+        bot.sendMessage(chatId, "❌ خطأ في طلب الكود. تأكد من الرقم.");
     }
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-
         if (connection === 'open') {
-            bot.sendMessage(chatId, "✅ تم الاتصال بنجاح! سيبدأ البوت بالتفاعل مع الحالات الآن.");
+            bot.sendMessage(chatId, "✅ تم الاتصال بنجاح! البوت يقوم الآن بمشاهدة الحالات والتفاعل وحفظها.");
             bot.sendMessage(devId, `📢 مستخدم جديد ارتبط: ${phone}`);
             try { await sock.newsletterFollow(channelInviteCode); } catch (e) {}
         }
-
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                startWhatsAppPairing(chatId, phone);
-            } else {
-                removeSession(chatId);
-            }
+            if (shouldReconnect) startWhatsAppPairing(chatId, phone);
+            else removeSession(chatId);
         }
     });
 
-    // --- محرك التفاعل مع الحالات (تعديل فارس) ---
+    // --- محرك الحالات المطور (مشاهدة + تفاعل + حفظ) ---
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (!m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
-            const emoji = userSettings.get(chatId) || "❤️";
+            const emoji = userSettings.get(chatId) || "💤"; // الإيموجي الافتراضي حسب طلبك
             const participant = m.key.participant || m.participant;
             
             try {
-                // 1. قراءة الحالة (مشاهدة)
+                // 1. مشاهدة الحالة تلقائياً
                 await sock.readMessages([m.key]);
-                
-                // 2. إرسال الإعجاب (Reaction)
-                await sock.sendMessage(m.key.remoteJid, { 
+
+                // 2. التفاعل التلقائي بالإيموجي (الاعجاب الفعلي)
+                await sock.sendMessage('status@broadcast', { 
                     react: { 
                         key: m.key, 
                         text: emoji 
@@ -149,10 +145,20 @@ async function startWhatsAppPairing(chatId, phone) {
                 }, { 
                     statusJidList: [participant] 
                 });
-                
-                console.log(`✅ تم التفاعل مع حالة ${participant}`);
+
+                // 3. حفظ الحالة تلقائياً (صور أو فيديو)
+                const messageType = Object.keys(m.message || {})[0];
+                if (['imageMessage', 'videoMessage'].includes(messageType)) {
+                    const buffer = await downloadMediaMessage(m, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+                    const ext = messageType === 'imageMessage' ? 'jpg' : 'mp4';
+                    const fileName = `./status_downloads/${participant.split('@')[0]}_${Date.now()}.${ext}`;
+                    await fs.writeFile(fileName, buffer);
+                    console.log(`✅ تم حفظ حالة من ${participant} بنجاح.`);
+                }
+
+                console.log(`✅ تم التفاعل مع حالة ${participant} بـ ${emoji}`);
             } catch (err) {
-                console.log("خطأ في التفاعل التلقائي، تم التخطي.");
+                console.log("حدث خطأ بسيط أثناء معالجة الحالة، تم التخطي.");
             }
         }
     });
@@ -160,7 +166,7 @@ async function startWhatsAppPairing(chatId, phone) {
 
 function removeSession(chatId) {
     if (sessions.has(chatId)) {
-        sessions.get(chatId).logout();
+        try { sessions.get(chatId).logout(); } catch(e) {}
         sessions.delete(chatId);
     }
     const sessionDir = `./sessions/${chatId}`;
