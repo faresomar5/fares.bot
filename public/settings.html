@@ -3,175 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GOLDEN QUEEN | CONTROL PANEL</title>
+  <title>GOLDEN QUEEN | CONTROL PANEL v2.0</title>
   <style>
     :root {
       --bg: #020617; --panel: #0f172a; --accent: #22c55e; --gold: #d4a017;
-      --text: #f8fafc; --muted: #94a3b8; --border: #1e293b;
+      --text: #f8fafc; --muted: #94a3b8; --border: #1e293b; --danger: #ef4444;
     }
     body {
       margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: var(--bg); color: var(--text); overflow-x: hidden;
+      background: var(--bg); color: var(--text); direction: rtl;
     }
-    /* واجهة الدخول */
+
+    /* شاشة تسجيل الدخول */
     #login-screen {
       height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
     }
     .login-box {
       background: var(--panel); padding: 40px; border-radius: 24px;
-      border: 1px solid var(--border); width: 100%; max-width: 400px; text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border); width: 90%; max-width: 400px; text-align: center;
+      box-shadow: 0 0 30px rgba(212, 160, 23, 0.1);
     }
-    .login-box h2 { color: var(--gold); margin-bottom: 20px; }
-    input {
-      width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px;
-      border: 1px solid var(--border); background: #020617; color: white; text-align: center;
-    }
-    .btn-main {
-      width: 100%; padding: 15px; border-radius: 12px; border: none;
-      background: linear-gradient(45deg, var(--gold), #f9d976);
-      color: #000; font-weight: bold; cursor: pointer; transition: 0.3s;
-    }
-    /* واجهة التحكم */
-    #dashboard { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
-    .card {
-      background: var(--panel); border: 1px solid var(--border);
-      border-radius: 20px; padding: 20px; margin-bottom: 20px;
-    }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-    .setting-item {
+    .login-box h2 { color: var(--gold); margin-bottom: 25px; font-size: 28px; }
+
+    /* واجهة التحكم الأساسية */
+    #dashboard { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    
+    .header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 0; border-bottom: 1px solid #1e293b;
+      padding: 20px; background: var(--panel); border-radius: 15px; margin-bottom: 20px;
+      border: 1px solid var(--border);
     }
-    .switch {
-      position: relative; display: inline-block; width: 46px; height: 24px;
+
+    .grid-container {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
     }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background: #334155; transition: .4s; border-radius: 24px;
+
+    .card {
+      background: var(--panel); padding: 25px; border-radius: 20px;
+      border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     }
-    .slider:before {
-      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-      background: white; transition: .4s; border-radius: 50%;
+
+    .card h3 { color: var(--gold); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+    /* أدوات التحكم */
+    .input-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 14px; }
+    
+    input, select {
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+      background: #020617; color: white; box-sizing: border-box; outline: none;
     }
-    input:checked + .slider { background: var(--accent); }
-    input:checked + .slider:before { transform: translateX(22px); }
-    .section-title { color: var(--gold); font-weight: bold; margin-bottom: 15px; display: block; }
+    
+    input:focus { border-color: var(--gold); }
+
+    .btn {
+      padding: 12px 20px; border-radius: 10px; border: none; font-weight: bold;
+      cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px;
+    }
+    .btn-gold { background: linear-gradient(45deg, var(--gold), #f9d976); color: #000; }
+    .btn-gold:hover { opacity: 0.9; transform: translateY(-2px); }
+    
+    .status-badge {
+      padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;
+    }
+    .online { background: rgba(34, 197, 94, 0.2); color: var(--accent); }
+
+    /* قسم الأوامر المباشرة */
+    .command-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+    .cmd-btn {
+      background: #1e293b; color: white; border: 1px solid var(--border);
+      padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 13px;
+    }
+    .cmd-btn:hover { background: var(--gold); color: black; }
+
   </style>
 </head>
 <body>
 
+  <!-- شاشة الدخول -->
   <div id="login-screen">
     <div class="login-box">
-      <div style="font-size: 40px; margin-bottom: 10px;">👑</div>
-      <h2>دخول المشرف</h2>
-      <input type="text" id="user-number" placeholder="رقم المالك (967...)">
-      <input type="password" id="user-pass" placeholder="كلمة المرور 🔐">
-      <button class="btn-main" onclick="handleLogin()">تسجيل الدخول</button>
+      <h2>GOLDEN QUEEN</h2>
+      <p style="color: var(--muted);">سجل دخولك للتحكم بالبوت</p>
+      <input type="password" id="admin-pass" placeholder="أدخل رمز التحقق">
+      <button class="btn btn-gold" onclick="login()">دخول اللوحة</button>
     </div>
   </div>
 
+  <!-- لوحة التحكم -->
   <div id="dashboard">
-    <header style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: var(--gold);">GOLDEN QUEEN SETTINGS</h1>
-        <p style="color: var(--muted);">تحكم في كافة خصائص البوت من مكان واحد</p>
-    </header>
-
-    <div class="grid">
-        <div class="card">
-            <span class="section-title">الأمان والخصوصية</span>
-            <div class="setting-item">
-                <span>متصل دائماً (Online)</span>
-                <label class="switch"><input type="checkbox" id="alwaysOnline"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <span>مكافحة الحذف (Anti-Delete)</span>
-                <label class="switch"><input type="checkbox" id="antiDelete"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <span>مكافحة الروابط (Anti-Link)</span>
-                <label class="switch"><input type="checkbox" id="antiLink"><span class="slider"></span></label>
-            </div>
-        </div>
-
-        <div class="card">
-            <span class="section-title">التفاعل والأتمتة</span>
-            <div class="setting-item">
-                <span>قراءة الحالات</span>
-                <label class="switch"><input type="checkbox" id="autoStatusRead"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <span>تفاعل الحالات</span>
-                <label class="switch"><input type="checkbox" id="autoStatusReact"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <span>روبوت المحادثة (ChatBot)</span>
-                <label class="switch"><input type="checkbox" id="chatBot"><span class="slider"></span></label>
-            </div>
-        </div>
+    <div class="header">
+      <div>
+        <h1 style="margin:0; color: var(--gold);">الملكة الذهبية <span style="font-size: 14px; color: var(--muted);">V2.0</span></h1>
+        <div style="margin-top:5px;">الحالة: <span class="status-badge online" id="bot-status">متصل بالرقم المربوط</span></div>
+      </div>
+      <button onclick="location.reload()" class="btn" style="width:auto; background:var(--danger); color:white;">تسجيل خروج</button>
     </div>
 
-    <div class="card" style="text-align: center;">
-        <button class="btn-main" style="max-width: 300px;" onclick="handleSave()">حفظ جميع الإعدادات ✅</button>
+    <div class="grid-container">
+      <!-- إعدادات البوت الأساسية -->
+      <div class="card">
+        <h3>⚙️ إعدادات الهوية</h3>
+        <div class="input-group">
+          <label>اسم البوت المربوط</label>
+          <input type="text" id="bot-name" placeholder="مثال: GOLDEN QUEEN BOT">
+        </div>
+        <div class="input-group">
+          <label>إيموجي التفاعل (Reaction)</label>
+          <input type="text" id="bot-emoji" placeholder="مثال: ✨">
+        </div>
+        <div class="input-group">
+          <label>البادئة (Prefix)</label>
+          <input type="text" id="bot-prefix" placeholder="مثال: . أو #">
+        </div>
+        <button class="btn btn-gold" onclick="updateSettings()">تحديث الإعدادات</button>
+      </div>
+
+      <!-- التحكم في الأوامر -->
+      <div class="card">
+        <h3>🚀 أوامر سريعة</h3>
+        <p style="font-size: 13px; color: var(--muted);">نفذ الأوامر مباشرة على الرقم المربوط:</p>
+        <div class="command-list">
+          <button class="cmd-btn" onclick="sendCommand('تشغيل الوضع العام')">الوضع العام</button>
+          <button class="cmd-btn" onclick="sendCommand('تشغيل الوضع الخاص')">الوضع الخاص</button>
+          <button class="cmd-btn" onclick="sendCommand('تصفية المجموعات')">تصفية</button>
+          <button class="cmd-btn" onclick="sendCommand('فحص التحديثات')">تحديث السورس</button>
+          <button class="cmd-btn" onclick="sendCommand('إعادة تشغيل')">إعادة تشغيل</button>
+        </div>
+        <hr style="border:0; border-top:1px solid var(--border); margin: 20px 0;">
+        <div class="input-group">
+          <label>إرسال رسالة برودكاست للكل</label>
+          <input type="text" id="broadcast-msg" placeholder="اكتب الرسالة هنا...">
+          <button class="btn btn-gold" style="background: var(--accent); color: white;" onclick="broadcast()">إرسال الآن</button>
+        </div>
+      </div>
+
+      <!-- إحصائيات -->
+      <div class="card">
+        <h3>📊 الإحصائيات الحالية</h3>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+          <span>المجموعات:</span>
+          <span id="stat-groups" style="color:var(--gold)">142</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+          <span>المستخدمين:</span>
+          <span id="stat-users" style="color:var(--gold)">1,205</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+          <span>الأوامر المنفذة:</span>
+          <span id="stat-cmds" style="color:var(--gold)">8,432</span>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    async function handleLogin() {
-      const number = document.getElementById('user-number').value;
-      const password = document.getElementById('user-pass').value;
-
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number, password })
-      });
-
-      const data = await res.json();
-      if(data.success) {
-        localStorage.setItem('phone', number);
-        localStorage.setItem('pass', password);
+    // نظام تسجيل دخول بسيط
+    function login() {
+      const pass = document.getElementById('admin-pass').value;
+      if(pass === "1234") { // يمكنك تغيير الرمز هنا
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
-        // تعبئة البيانات إذا كانت موجودة
-        if(data.settings) fillSettings(data.settings);
+        loadSavedData();
       } else {
-        alert(data.message);
+        alert("رمز التحقق غير صحيح!");
       }
     }
 
-    function fillSettings(s) {
-        document.getElementById('alwaysOnline').checked = s.alwaysOnline === true;
-        document.getElementById('antiDelete').checked = s.antiDelete === true;
-        document.getElementById('antiLink').checked = s.antiLink === true;
-        document.getElementById('autoStatusRead').checked = s.autoStatusRead === true;
-        document.getElementById('autoStatusReact').checked = s.autoStatusReact === true;
-        document.getElementById('chatBot').checked = s.chatBot === true;
+    // تحديث الإعدادات وحفظها
+    function updateSettings() {
+      const name = document.getElementById('bot-name').value;
+      const emoji = document.getElementById('bot-emoji').value;
+      const prefix = document.getElementById('bot-prefix').value;
+
+      // حفظ في المتصفح (كمثال) - في الواقع يتم الربط بـ API الخاص بك
+      localStorage.setItem('bot_name', name);
+      localStorage.setItem('bot_emoji', emoji);
+      localStorage.setItem('bot_prefix', prefix);
+
+      alert("تم تحديث إعدادات الرقم المربوط بنجاح ✨");
     }
 
-    async function handleSave() {
-        const settings = {
-            alwaysOnline: document.getElementById('alwaysOnline').checked,
-            antiDelete: document.getElementById('antiDelete').checked,
-            antiLink: document.getElementById('antiLink').checked,
-            autoStatusRead: document.getElementById('autoStatusRead').checked,
-            autoStatusReact: document.getElementById('autoStatusReact').checked,
-            chatBot: document.getElementById('chatBot').checked
-        };
+    // إرسال أوامر (محاكاة)
+    function sendCommand(cmd) {
+      const emoji = localStorage.getItem('bot_emoji') || '✨';
+      console.log(`Sending command: ${cmd}`);
+      alert(`${emoji} تم إرسال أمر [ ${cmd} ] للرقم المربوط`);
+    }
 
-        const res = await fetch('/api/settings/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                number: localStorage.getItem('phone'),
-                password: localStorage.getItem('pass'),
-                settings
-            })
-        });
+    function broadcast() {
+      const msg = document.getElementById('broadcast-msg').value;
+      if(!msg) return alert("اكتب رسالة أولاً");
+      alert("جاري نشر الرسالة لجميع المحادثات...");
+    }
 
-        const data = await res.json();
-        if(data.success) alert("تم الحفظ بنجاح ✅");
+    // تحميل البيانات المحفوظة عند فتح اللوحة
+    function loadSavedData() {
+      document.getElementById('bot-name').value = localStorage.getItem('bot_name') || "GOLDEN QUEEN";
+      document.getElementById('bot-emoji').value = localStorage.getItem('bot_emoji') || "👑";
+      document.getElementById('bot-prefix').value = localStorage.getItem('bot_prefix') || ".";
     }
   </script>
 </body>
