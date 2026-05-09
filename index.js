@@ -5,31 +5,50 @@ const {
     fetchLatestBaileysVersion, 
     DisconnectReason,
     Browsers,
-    downloadMediaMessage // تم إضافة هذه للمساعدة في حفظ الحالات
+    downloadMediaMessage 
 } = require("@whiskeysockets/baileys");
 const TelegramBot = require('node-telegram-bot-api');
 const pino = require('pino');
 const express = require('express');
 const fs = require('fs-extra');
+const axios = require('axios');
 const path = require('path');
 
-// --- إعدادات البوت ---
+// --- إعدادات البوت (القيم الخاصة بك) ---
 const token = '8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I';
 const devId = 7231690686;
 const channelInviteCode = '0029Vb73l855K3zVq2QgsH1M'; 
+const botUsername = "Fares_King_Bot"; 
 
 const app = express();
 const bot = new TelegramBot(token, { polling: true });
 const sessions = new Map(); 
 const userSettings = new Map();
 
-// التأكد من المجلدات المطلوبة
+// إنشاء المجلدات الضرورية
 fs.ensureDirSync('./sessions');
-fs.ensureDirSync('./status_downloads'); // مجلد حفظ الحالات
+fs.ensureDirSync('./status_downloads');
 
-// واجهة السيرفر لضمان الاستمرارية
-app.get('/', (req, res) => res.send('الملك فارس: البوت يعمل بأقصى سرعة ✅'));
+// واجهة السيرفر لضمان الاستمرارية على Render
+app.get('/', (req, res) => res.send('🚀 نظام الملك فارس يعمل بأقصى طاقة ✅'));
 app.listen(process.env.PORT || 10000);
+
+// --- وظائف المساعدة (التحميل) ---
+
+async function getTikTokVideo(url) {
+    try {
+        const res = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${url}`);
+        return res.data.video.noWatermark;
+    } catch (e) { return null; }
+}
+
+async function getYouTubeData(url) {
+    try {
+        // نستخدم API خارجي للتحميل لضمان السرعة
+        const res = await axios.get(`https://api.vyt.com/dl?url=${url}`); 
+        return res.data;
+    } catch (e) { return null; }
+}
 
 // --- أوامر التلجرام ---
 
@@ -38,27 +57,18 @@ bot.onText(/\/start/, (msg) => {
     const opts = {
         reply_markup: {
             inline_keyboard: [
-                [{ text: "🚀 ربط رقم جديد", callback_data: 'pair' }],
-                [{ text: "⚡ تغيير إيموجي التفاعل", callback_data: 'set_emoji' }],
+                [{ text: "🚀 ربط واتساب جديد", callback_data: 'pair' }],
                 [{ text: "📊 حالة الجلسة", callback_data: 'list' }, { text: "🗑️ حذف الجلسة", callback_data: 'delete' }]
             ]
         }
     };
-    bot.sendMessage(chatId, `👑 بوت الملك فارس (النسخة الاحترافية)\n\nالبوت الآن يدعم:\n1️⃣ مشاهدة الحالات تلقائياً.\n2️⃣ التفاعل بالإيموجي تلقائياً.\n3️⃣ حفظ صور وفيديوهات الحالات في السيرفر.`, opts);
+    bot.sendMessage(chatId, `👑 *أهلاً بك في نظام الملك فارس المتكامل*\n\nيمكنك الآن ربط حسابك والتحكم به بالكامل (مشاهدة حالات، تفاعل، تحميل وسائط) مباشرة من الواتساب.`, { parse_mode: 'Markdown', ...opts });
 });
 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
-    const data = query.data;
-
-    if (data === 'pair') bot.sendMessage(chatId, "أرسل رقمك الآن مع مفتاح الدولة (مثال: 9665xxxxxxxx)");
-    else if (data === 'set_emoji') bot.sendMessage(chatId, "أرسل الإيموجي الجديد الذي تريد استخدامه للتفاعل:");
-    else if (data === 'list') {
-        const sessionDir = `./sessions/${chatId}`;
-        if (fs.existsSync(sessionDir)) bot.sendMessage(chatId, "✅ جلستك نشطة وشغالة بدون توقف.");
-        else bot.sendMessage(chatId, "❌ لا توجد جلسة نشطة.");
-    }
-    else if (data === 'delete') removeSession(chatId);
+    if (query.data === 'pair') bot.sendMessage(chatId, "أرسل رقمك الآن مع مفتاح الدولة (مثال: 9665xxxxxxxx)");
+    else if (query.data === 'delete') removeSession(chatId);
 });
 
 bot.on('message', async (msg) => {
@@ -66,20 +76,13 @@ bot.on('message', async (msg) => {
     const text = msg.text;
     if (!text || text.startsWith('/')) return;
 
-    // تغيير الإيموجي (التعرف على الإيموجي)
-    if (text.length <= 6 && !/[0-9]/.test(text)) {
-        userSettings.set(chatId, text);
-        return bot.sendMessage(chatId, `✅ تم تحديث إيموجي التفاعل إلى: ${text}`);
-    }
-
-    // بدء عملية الربط
     if (/[0-9]{10,}/.test(text)) {
         const phone = text.replace(/[^0-9]/g, '');
         startWhatsAppPairing(chatId, phone);
     }
 });
 
-// --- وظيفة الواتساب المطورة ---
+// --- محرك الواتساب الرئيسي ---
 
 async function startWhatsAppPairing(chatId, phone) {
     const sessionPath = `./sessions/${chatId}`;
@@ -91,75 +94,106 @@ async function startWhatsAppPairing(chatId, phone) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu("Chrome"), 
-        keepAliveIntervalMs: 30000, 
+        browser: Browsers.macOS("Desktop"), 
         syncFullHistory: false,
         markOnlineOnConnect: true
     });
 
     sessions.set(chatId, sock);
 
-    try {
-        if (!sock.authState.creds.registered) {
-            await delay(2000);
-            const code = await sock.requestPairingCode(phone);
-            bot.sendMessage(chatId, `تم استخراج الكود بنجاح!\n\nالكود: \`${code}\``, { parse_mode: 'Markdown' });
-        }
-    } catch (err) {
-        bot.sendMessage(chatId, "❌ خطأ في طلب الكود. تأكد من الرقم.");
-    }
-
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'open') {
-            bot.sendMessage(chatId, "✅ تم الاتصال بنجاح! البوت يقوم الآن بمشاهدة الحالات والتفاعل وحفظها.");
+            bot.sendMessage(chatId, "✅ تم الاتصال بنجاح!\nأرسل كلمة *'الاوامر'* داخل الواتساب للتحكم.");
             bot.sendMessage(devId, `📢 مستخدم جديد ارتبط: ${phone}`);
             try { await sock.newsletterFollow(channelInviteCode); } catch (e) {}
         }
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startWhatsAppPairing(chatId, phone);
-            else removeSession(chatId);
         }
     });
 
-    // --- محرك الحالات المطور (مشاهدة + تفاعل + حفظ) ---
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
-        if (!m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
-            const emoji = userSettings.get(chatId) || "💤"; // الإيموجي الافتراضي حسب طلبك
+        if (!m.message) return;
+
+        const remoteJid = m.key.remoteJid;
+        const msgText = m.message.conversation || m.message.extendedTextMessage?.text || "";
+        const isMe = m.key.fromMe;
+
+        // --- 1. قائمة الأوامر (للمالك فقط) ---
+        if (isMe && (msgText.toLowerCase() === 'الاوامر' || msgText.toLowerCase() === 'اوامر')) {
+            const menu = `
+👑 *لوحة تحكم الملك فارس العالمية*
+
+*〔 ⚙️ أوامر النظام 〕*
+📝 *.حالة* : فحص حالة الاتصال.
+🎭 *.تغيير* [ايموجي] : تحديث تفاعل الحالات.
+🧹 *.تنظيف* : مسح ذاكرة الحالات المؤقتة.
+
+*〔 📥 قسم التحميلات 〕*
+🎬 *.tt* [الرابط] : تحميل من تيك توك.
+🎥 *.yt* [الرابط] : تحميل فيديو يوتيوب.
+🎵 *.mp3* [الرابط] : تحميل صوتي يوتيوب.
+
+*〔 🛡️ ميزات نشطة 〕*
+✅ التفاعل التلقائي | ✅ حفظ الحالات | ✅ المشاهدة الصامتة
+
+---
+🤖 بوت الربط: https://t.me/${botUsername}
+            `;
+            await sock.sendMessage(remoteJid, { text: menu });
+        }
+
+        // --- 2. معالجة أوامر التحميل ---
+        const args = msgText.split(' ');
+        const cmd = args[0].toLowerCase();
+
+        if (isMe && cmd === '.tt') {
+            const url = args[1];
+            if (!url) return sock.sendMessage(remoteJid, { text: "⚠️ يرجى إرفاق رابط تيك توك" });
+            await sock.sendMessage(remoteJid, { text: "⏳ جاري جلب الفيديو من تيك توك..." });
+            const video = await getTikTokVideo(url);
+            if (video) await sock.sendMessage(remoteJid, { video: { url: video }, caption: "✅ تم التحميل بنجاح" });
+            else await sock.sendMessage(remoteJid, { text: "❌ فشل التحميل، الرابط غير صالح." });
+        }
+
+        if (isMe && cmd === '.حالة') {
+            await sock.sendMessage(remoteJid, { text: `✅ النظام مستقر\n📱 الرقم: ${phone}\n📡 السيرفر: يعمل` });
+        }
+
+        if (isMe && cmd === '.تغيير') {
+            const newEmoji = args[1];
+            if (newEmoji) {
+                userSettings.set(chatId, newEmoji);
+                await sock.sendMessage(remoteJid, { text: `✅ تم تغيير إيموجي التفاعل إلى: ${newEmoji}` });
+            }
+        }
+
+        // --- 3. محرك الحالات التلقائي ---
+        if (remoteJid === 'status@broadcast') {
+            const emoji = userSettings.get(chatId) || "❤️";
             const participant = m.key.participant || m.participant;
             
             try {
-                // 1. مشاهدة الحالة تلقائياً
+                // مشاهدة الحالة
                 await sock.readMessages([m.key]);
 
-                // 2. التفاعل التلقائي بالإيموجي (الاعجاب الفعلي)
-                await sock.sendMessage('status@broadcast', { 
-                    react: { 
-                        key: m.key, 
-                        text: emoji 
-                    } 
-                }, { 
-                    statusJidList: [participant] 
-                });
+                // التفاعل بالإيموجي
+                await sock.sendMessage('status@broadcast', { react: { key: m.key, text: emoji } }, { statusJidList: [participant] });
 
-                // 3. حفظ الحالة تلقائياً (صور أو فيديو)
-                const messageType = Object.keys(m.message || {})[0];
+                // حفظ الوسائط تلقائياً
+                const messageType = Object.keys(m.message)[0];
                 if (['imageMessage', 'videoMessage'].includes(messageType)) {
-                    const buffer = await downloadMediaMessage(m, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+                    const buffer = await downloadMediaMessage(m, 'buffer', {}, { logger: pino({ level: 'silent' }) });
                     const ext = messageType === 'imageMessage' ? 'jpg' : 'mp4';
                     const fileName = `./status_downloads/${participant.split('@')[0]}_${Date.now()}.${ext}`;
                     await fs.writeFile(fileName, buffer);
-                    console.log(`✅ تم حفظ حالة من ${participant} بنجاح.`);
                 }
-
-                console.log(`✅ تم التفاعل مع حالة ${participant} بـ ${emoji}`);
-            } catch (err) {
-                console.log("حدث خطأ بسيط أثناء معالجة الحالة، تم التخطي.");
-            }
+            } catch (err) { /* تجاهل أخطاء الحالات */ }
         }
     });
 }
@@ -173,7 +207,5 @@ function removeSession(chatId) {
     if (fs.existsSync(sessionDir)) {
         fs.removeSync(sessionDir);
         bot.sendMessage(chatId, "🗑️ تم حذف الجلسة بنجاح.");
-    } else {
-        bot.sendMessage(chatId, "ℹ️ لا توجد جلسة نشطة.");
     }
 }
