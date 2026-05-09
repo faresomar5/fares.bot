@@ -4,8 +4,7 @@ const {
     delay, 
     fetchLatestBaileysVersion, 
     DisconnectReason,
-    Browsers,
-    jidNormalizedUser
+    Browsers
 } = require("@whiskeysockets/baileys");
 const TelegramBot = require('node-telegram-bot-api');
 const pino = require('pino');
@@ -19,30 +18,22 @@ const MY_RENDER_URL = "https://fares-bot.onrender.com";
 
 const app = express();
 const bot = new TelegramBot(token, { polling: true });
-const sessions = new Map(); 
 
 fs.ensureDirSync('./sessions');
 
-app.get('/', (req, res) => res.send('الملك فارس: البوت شغال ✅'));
+app.get('/', (req, res) => res.send('بوت الملك فارس: متصل ومستقر ✅'));
 app.listen(process.env.PORT || 10000);
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
-    const text = msg.text;
-    if (!text) return;
-
-    if (text === '/start') {
-        return bot.sendMessage(chatId, "👑 بوت الملك فارس\n\nأرسل رقمك الآن لبدء الربط.");
-    }
-
-    if (/[0-9]{10,}/.test(text)) {
-        const phone = text.replace(/[^0-9]/g, '');
-        bot.sendMessage(chatId, "⏳ جاري توليد الكود...");
-        startWhatsAppPairing(chatId, phone);
+    if (msg.text === '/start') return bot.sendMessage(chatId, "👑 أرسل رقمك الآن لبدء الربط.");
+    if (/[0-9]{10,}/.test(msg.text)) {
+        bot.sendMessage(chatId, "⏳ جاري محاولة الربط... يرجى الانتظار ولا تغلق الواتساب.");
+        startWhatsApp(chatId, msg.text.replace(/[^0-9]/g, ''));
     }
 });
 
-async function startWhatsAppPairing(chatId, phone) {
+async function startWhatsApp(chatId, phone) {
     const sessionPath = `./sessions/${chatId}`;
     if (fs.existsSync(sessionPath)) await fs.remove(sessionPath);
 
@@ -53,46 +44,54 @@ async function startWhatsAppPairing(chatId, phone) {
         version,
         auth: state,
         logger: pino({ level: 'silent' }),
-        browser: Browsers.macOS("Chrome"),
-        markOnlineOnConnect: true
+        browser: Browsers.macOS("Desktop"), // تغيير المتصفح لحل مشكلة التعليق
+        connectTimeoutMs: 100000, // زيادة وقت الانتظار
+        defaultQueryTimeoutMs: 0,
+        keepAliveIntervalMs: 30000
     });
 
-    sessions.set(chatId, sock);
+    // حفظ البيانات فوراً عند أي تغيير
     sock.ev.on('creds.update', saveCreds);
 
     try {
         await delay(5000);
         const code = await sock.requestPairingCode(phone);
-        bot.sendMessage(chatId, `✅ كود الربط:\n\n \`${code}\``, { parse_mode: 'Markdown' });
+        await bot.sendMessage(chatId, `✅ كود الربط: \`${code}\``, { parse_mode: 'Markdown' });
     } catch (e) {
-        bot.sendMessage(chatId, "❌ فشل طلب الكود، حاول مجدداً.");
+        return bot.sendMessage(chatId, "❌ فشل طلب الكود، حاول مجدداً.");
     }
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
+        
         if (connection === 'open') {
-            bot.sendMessage(chatId, "🎊 تم تسجيل الدخول بنجاح!");
-            await sock.sendMessage(jidNormalizedUser(sock.user.id), { text: `✅ تم تفعيل البوت!\n🔗 ${MY_RENDER_URL}` });
+            bot.sendMessage(chatId, "🎊 مبروك! تم الربط بنجاح.");
+            await sock.sendMessage(sock.user.id, { text: "✅ تم تشغيل بوت الملك فارس بنجاح!" });
         }
+
         if (connection === 'close') {
-            if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
-                startWhatsAppPairing(chatId, phone);
+            const reason = lastDisconnect?.error?.output?.statusCode;
+            if (reason !== DisconnectReason.loggedOut) {
+                startWhatsApp(chatId, phone);
+            } else {
+                await fs.remove(sessionPath);
+                bot.sendMessage(chatId, "❌ تم تسجيل الخروج، يرجى إعادة الربط.");
             }
         }
     });
 
+    // التفاعل التلقائي
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (m.key.remoteJid === 'status@broadcast') {
-            await delay(1000);
+            await delay(2000); // تأخير بسيط للثبات
             try {
                 await sock.readMessages([m.key]);
                 await sock.sendMessage(m.key.remoteJid, { react: { key: m.key, text: "💤" } }, { statusJidList: [m.key.participant] });
-            } catch (err) {}
+            } catch {}
         }
     });
 }
 
-setInterval(() => {
-    axios.get(MY_RENDER_URL).catch(() => {});
-}, 3 * 60 * 1000);
+// Keep-Alive
+setInterval(() => { axios.get(MY_RENDER_URL).catch(() => {}); }, 4 * 60 * 1000);
