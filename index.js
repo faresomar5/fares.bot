@@ -15,7 +15,7 @@ const path = require('path');
 
 // --- الإعدادات الأساسية ---
 const token = '8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I';
-const ADMIN_ID = 544321234; // ضع معرف التليجرام الخاص بك هنا (المطور)
+const ADMIN_ID = 7231690686; // ضع معرف التليجرام الخاص بك هنا (المطور)
 const CHANNEL_USER = "@YourChannel"; // يوزر قناتك للاشتراك الإجباري
 const app = express();
 const bot = new TelegramBot(token, { polling: true });
