@@ -1,6 +1,10 @@
 services:
   - type: web
-    name: my-bot
-    env: python # أو node حسب لغتك
-    buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    name: fares-bot
+    env: python  # قم بتغييرها إلى node إذا كان مشروعك بلغة Node.js
+    plan: free
+    buildCommand: pip install -r requirements.txt  # أو npm install
+    startCommand: python main.py                  # أو الكود المشغل لمشروعك
+    envVars:
+      - key: RENDER_EXTERNAL_URL
+        value: https://fares-bot-ynbr.onrender.com
