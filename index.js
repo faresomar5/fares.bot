@@ -13,10 +13,10 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 
-// --- الإعدادات الأساسية ---
+// --- الإعدادات الأساسية (تأكد من تعديل الـ ADMIN_ID) ---
 const token = '8631941557:AAHJ_97NplwcLMkee0-Zrf2FY5XqmI6E_0I';
-const ADMIN_ID = 7231690686; // قم بتغييره إلى معرف التليجرام الخاص بك (المطور) لفتح لوحة التحكم
-const CHANNEL_USER = "@fz_z_Z"; // القناة الجديدة المطلوبة
+const ADMIN_ID = 7231690686; // ضع معرفك هنا لفتح لوحة التحكم
+const CHANNEL_USER = "@fz_z_Z"; // القناة الخاصة بك
 const app = express();
 app.use(express.json());
 const bot = new TelegramBot(token, { polling: true });
@@ -26,7 +26,7 @@ const sessions = new Map();
 const SESSIONS_DIR = './sessions';
 fs.ensureDirSync(SESSIONS_DIR);
 
-// --- نظام إدارة الإعدادات الذكي (لكل مستخدم) ---
+// --- نظام الإعدادات ---
 const getDefaultSettings = () => ({
     name: "GOLDEN QUEEN",
     emoji: "👑",
@@ -34,7 +34,7 @@ const getDefaultSettings = () => ({
     autoReactStatus: true,
     autoSaveStatus: false,
     alwaysOnline: true,
-    autoReplies: [], // يدعم حتى 100 رد
+    autoReplies: [],
     mode: "public"
 });
 
@@ -56,15 +56,18 @@ const saveUserSettings = (chatId, data) => {
     fs.writeJsonSync(getUserConfigPath(chatId), { ...current, ...data });
 };
 
-// --- التحقق من الاشتراك الإجباري ---
+// --- وظيفة التحقق من الاشتراك (تم تصحيحها) ---
 async function checkSub(chatId) {
     try {
         const member = await bot.getChatMember(CHANNEL_USER, chatId);
         return ['member', 'administrator', 'creator'].includes(member.status);
-    } catch { return false; }
+    } catch (e) { 
+        console.error("خطأ في فحص القناة: تأكد من رفع البوت مشرفاً في القناة.");
+        return false; 
+    }
 }
 
-// --- محرك واتساب (النسخة المستقرة) ---
+// --- محرك واتساب ---
 async function startBot(chatId, phone) {
     const sessionDir = path.join(SESSIONS_DIR, String(chatId));
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
@@ -86,9 +89,9 @@ async function startBot(chatId, phone) {
         await delay(3000);
         try {
             const code = await sock.requestPairingCode(phone);
-            bot.sendMessage(chatId, `✅ تم توليد كود الربط الخاص بك:\n\n\`${code}\`\n\nقم بإدخاله في واتساب (الأجهزة المرتبطة > ربط برقم هاتف)`, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `✅ كود الربط الخاص بك:\n\n\`${code}\`\n\nقم بفتح واتساب > الأجهزة المرتبطة > ربط هاتف > أدخل الكود.`, { parse_mode: 'Markdown' });
         } catch (e) {
-            bot.sendMessage(chatId, "❌ خطأ في طلب الكود، يرجى المحاولة مرة أخرى لاحقاً.");
+            bot.sendMessage(chatId, "❌ فشل طلب الكود. تأكد من صحة الرقم والمحاولة لاحقاً.");
         }
     }
 
@@ -99,7 +102,7 @@ async function startBot(chatId, phone) {
         const config = getUserSettings(chatId);
 
         if (connection === 'open') {
-            bot.sendMessage(chatId, "🔓 تم الاتصال بنجاح! الملكة الذهبية الآن تحت تصرفك.");
+            bot.sendMessage(chatId, "🔓 تم الاتصال بنجاح! حسابك نشط الآن.");
             if (config.alwaysOnline) await sock.sendPresenceUpdate('available');
         }
         
@@ -117,47 +120,32 @@ async function startBot(chatId, phone) {
         const remoteJid = m.key.remoteJid;
         const msgText = m.message.conversation || m.message.extendedTextMessage?.text || "";
 
-        // 1. إدارة الحالات (Status)
+        // التعامل مع الحالات
         if (remoteJid === 'status@broadcast') {
             if (config.autoViewStatus) await sock.readMessages([m.key]);
             if (config.autoReactStatus) {
                 await sock.sendMessage('status@broadcast', { react: { key: m.key, text: config.emoji } }, { statusJidList: [m.key.participant] });
             }
-            if (config.autoSaveStatus) {
-                try {
-                    const buffer = await downloadMediaMessage(m, 'buffer', {});
-                    const savePath = `./sessions/${chatId}/saved_status/`;
-                    fs.ensureDirSync(savePath);
-                    fs.writeFileSync(path.join(savePath, `${Date.now()}.jpg`), buffer);
-                } catch (e) { console.error("Error saving status"); }
-            }
             return;
         }
 
-        // 2. نظام الردود التلقائية
+        // الردود التلقائية
         const reply = config.autoReplies.find(r => r.key.toLowerCase() === msgText.toLowerCase());
-        if (reply) {
-            await sock.sendMessage(remoteJid, { text: reply.res });
-        }
+        if (reply) await sock.sendMessage(remoteJid, { text: reply.res });
     });
 }
 
-// --- أوامر تليجرام ---
+// --- أوامر التليجرام ---
 
-// رسالة /start
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const isSub = await checkSub(chatId);
     
     if (!isSub) {
-        return bot.sendMessage(chatId, `⚠️ عذراً! يجب عليك الاشتراك في قناة البوت أولاً لتتمكن من استخدامه:\n\n🔗 ${CHANNEL_USER}\n\nبعد الاشتراك، أرسل /start مجدداً.`);
+        return bot.sendMessage(chatId, `⚠️ عذراً! يجب عليك الاشتراك في قناة البوت أولاً:\n\n🔗 ${CHANNEL_USER}\n\nبعد الاشتراك، أرسل /start مجدداً.`);
     }
 
-    const welcome = `👋 أهلاً بك في نظام *GOLDEN QUEEN*\n\n` +
-                    `أرسل رقم هاتفك الآن مع رمز الدولة (مثال: 967xxxxxxx) ليتم إرسال كود ربط واتساب إليك.\n\n` +
-                    `استخدم الأزرار أدناه للتحكم في حسابك بعد الربط:`;
-    
-    bot.sendMessage(chatId, welcome, {
+    bot.sendMessage(chatId, `👋 أهلاً بك في نظام *GOLDEN QUEEN*\n\nأرسل رقم هاتفك مع مفتاح الدولة (مثل: 9677xxxxxxx) لبدء الربط.`, {
         parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
@@ -168,61 +156,36 @@ bot.onText(/\/start/, async (msg) => {
     });
 });
 
-// أوامر المطور /admin
 bot.onText(/\/admin/, (msg) => {
-    if (msg.from.id !== ADMIN_ID) return bot.sendMessage(msg.chat.id, "❌ هذا الأمر مخصص للمطور فقط.");
-    
-    bot.sendMessage(msg.chat.id, "👨‍💻 *لوحة تحكم المطور المركزية*", {
-        parse_mode: 'Markdown',
+    if (msg.from.id !== ADMIN_ID) return;
+    bot.sendMessage(msg.chat.id, "👨‍💻 لوحة المطور", {
         reply_markup: {
             inline_keyboard: [
-                [{ text: "📊 إحصائيات النظام", callback_data: "stats" }],
-                [{ text: "📢 إذاعة عامة (برودكاست)", callback_data: "broadcast_all" }]
+                [{ text: "📊 إحصائيات", callback_data: "stats" }],
+                [{ text: "📢 إذاعة", callback_data: "broadcast_all" }]
             ]
         }
     });
 });
 
-// معالجة ضغطات الأزرار (Callback Queries)
+// معالجة الأزرار
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
     const config = getUserSettings(chatId);
 
-    // 📊 تصحيح وظيفة الإحصائيات
     if (data === "stats") {
-        const folders = fs.readdirSync(SESSIONS_DIR);
-        const usersCount = folders.filter(f => fs.lstatSync(path.join(SESSIONS_DIR, f)).isDirectory()).length;
-        const uptime = process.uptime();
-        const hours = Math.floor(uptime / 3600);
-        const minutes = Math.floor((uptime % 3600) / 60);
-
-        const statsText = `📊 *إحصائيات النظام الحالية:*\n\n` +
-                          `👥 عدد المستخدمين النشطين: ${usersCount}\n` +
-                          `⏱️ وقت تشغيل السيرفر: ${hours} ساعة و ${minutes} دقيقة\n` +
-                          `📡 حالة الاتصال: مستقرة ✅\n` +
-                          `🧠 استهلاك الذاكرة: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`;
-        
-        bot.sendMessage(chatId, statsText, { parse_mode: 'Markdown' });
+        const users = fs.readdirSync(SESSIONS_DIR).filter(f => fs.lstatSync(path.join(SESSIONS_DIR, f)).isDirectory()).length;
+        bot.sendMessage(chatId, `📊 عدد المستخدمين: ${users}\n⏱️ وقت التشغيل: ${Math.floor(process.uptime()/60)} دقيقة`);
     }
 
-    // إدارة الإعدادات
     if (data === "manage_settings") {
-        const settingsText = `🛠 *إعدادات حسابك الحالي:*\n\n` +
-                             `• إيموجي التفاعل: ${config.emoji}\n` +
-                             `• مشاهدة الحالات: ${config.autoViewStatus ? "✅" : "❌"}\n` +
-                             `• التفاعل مع الحالات: ${config.autoReactStatus ? "✅" : "❌"}\n` +
-                             `• حفظ الحالات: ${config.autoSaveStatus ? "✅" : "❌"}\n` +
-                             `• متصل دائماً: ${config.alwaysOnline ? "✅" : "❌"}`;
-        
-        bot.sendMessage(chatId, settingsText, {
-            parse_mode: 'Markdown',
+        bot.sendMessage(chatId, `🛠 إعداداتك:\n\n• مشاهدة الحالات: ${config.autoViewStatus ? "✅" : "❌"}\n• تفاعل الحالات: ${config.autoReactStatus ? "✅" : "❌"}\n• متصل دائماً: ${config.alwaysOnline ? "✅" : "❌"}`, {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: "تبديل مشاهدة الحالات", callback_data: "toggle_autoViewStatus" }],
-                    [{ text: "تبديل تفاعل الحالات", callback_data: "toggle_autoReactStatus" }],
-                    [{ text: "تبديل حفظ الحالات", callback_data: "toggle_autoSaveStatus" }],
-                    [{ text: "تبديل (متصل دائماً)", callback_data: "toggle_alwaysOnline" }]
+                    [{ text: "مشاهدة الحالات", callback_data: "toggle_autoViewStatus" }],
+                    [{ text: "تفاعل الحالات", callback_data: "toggle_autoReactStatus" }],
+                    [{ text: "متصل دائماً", callback_data: "toggle_alwaysOnline" }]
                 ]
             }
         });
@@ -231,48 +194,34 @@ bot.on('callback_query', async (query) => {
     if (data.startsWith("toggle_")) {
         const field = data.replace("toggle_", "");
         saveUserSettings(chatId, { [field]: !config[field] });
-        bot.answerCallbackQuery(query.id, { text: "تم تحديث الإعداد بنجاح ✅" });
-        // لتحديث الرسالة بعد الضغط
-        bot.deleteMessage(chatId, query.message.message_id);
+        bot.answerCallbackQuery(query.id, { text: "تم التحديث ✅" });
     }
 
     if (data === "add_reply_step") {
-        bot.sendMessage(chatId, "أرسل الكلمة المفتاحية (التي سيرسلها الشخص):");
-        bot.once('message', (msgK) => {
-            bot.sendMessage(chatId, `تم تحديد الكلمة: *${msgK.text}*\nالآن أرسل الرد الذي سيقوم البوت بإرساله:`, {parse_mode: 'Markdown'});
-            bot.once('message', (msgR) => {
-                const currentReplies = config.autoReplies;
-                if (currentReplies.length >= 100) return bot.sendMessage(chatId, "❌ عذراً، لقد وصلت للحد الأقصى (100 رد).");
-                currentReplies.push({ key: msgK.text, res: msgR.text });
-                saveUserSettings(chatId, { autoReplies: currentReplies });
-                bot.sendMessage(chatId, "✅ تم إضافة الرد التلقائي بنجاح!");
+        bot.sendMessage(chatId, "أرسل الكلمة التي تريد الرد عليها:");
+        bot.once('message', (k) => {
+            bot.sendMessage(chatId, "أرسل نص الرد:");
+            bot.once('message', (r) => {
+                const reps = config.autoReplies;
+                reps.push({ key: k.text, res: r.text });
+                saveUserSettings(chatId, { autoReplies: reps });
+                bot.sendMessage(chatId, "✅ تم الحفظ.");
             });
-        });
-    }
-
-    if (data === "broadcast_all") {
-        bot.sendMessage(chatId, "أرسل الرسالة التي تريد إذاعتها لجميع مستخدمي البوت:");
-        bot.once('message', (msgB) => {
-            const users = fs.readdirSync(SESSIONS_DIR);
-            users.forEach(u => {
-                if (!isNaN(u)) bot.sendMessage(u, `📢 *رسالة من الإدارة:*\n\n${msgB.text}`, {parse_mode: 'Markdown'});
-            });
-            bot.sendMessage(chatId, "✅ تم إرسال البرودكاست بنجاح.");
         });
     }
 });
 
-// استقبال رقم الهاتف وبدء الربط
+// استقبال الرقم (تم تصحيح القناة هنا أيضاً)
 bot.on('message', async (msg) => {
     if (msg.text && /^[0-9]{10,}$/.test(msg.text.replace('+', ''))) {
         const isSub = await checkSub(msg.chat.id);
-        if (!isSub) return bot.sendMessage(msg.chat.id, `⚠️ يجب الاشتراك في القناة أولاً: ${CHANNEL_USER}`);
-        
-        bot.sendMessage(msg.chat.id, "⏳ جاري تحضير كود الربط، انتظر قليلاً...");
+        if (!isSub) {
+            return bot.sendMessage(msg.chat.id, `⚠️ يجب الاشتراك أولاً في القناة:\n🔗 ${CHANNEL_USER}`);
+        }
+        bot.sendMessage(msg.chat.id, "⏳ جاري طلب كود الربط...");
         startBot(msg.chat.id, msg.text.replace(/[^0-9]/g, ''));
     }
 });
 
-// --- السيرفر (Dashboard) ---
-app.get('/', (req, res) => res.send(`System ${getDefaultSettings().name} is Online ✅`));
+app.get('/', (req, res) => res.send("Bot Online ✅"));
 app.listen(process.env.PORT || 10000);
